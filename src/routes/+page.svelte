@@ -1,2 +1,4 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<!-- todo:
+逻辑:页面加载时获取:最新的10篇文章,过去24小时内收到赞同最多的文章
+界面:导航栏,用于快速导航(可能提取为'+layout.svelte')文章列表,一个按钮,用户已登陆则跳转至新建文章界面,否则跳转至登陆界面
+样式:待定 -->
