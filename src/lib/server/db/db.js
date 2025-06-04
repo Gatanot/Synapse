@@ -1,13 +1,19 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, ServerApiVersion } from 'mongodb';
 import { MONGODB_URL, MONGODB_DB_NAME } from '$env/static/private';
-
 if (!MONGODB_URL) {
     throw new Error('MongoDB connection string (MONGODB_URL) is not defined in environment variables.');
 }
 if (!MONGODB_DB_NAME) {
     throw new Error('MongoDB database name (MONGODB_DB_NAME) is not defined in environment variables.');
 }
-const client = new MongoClient(MONGODB_URL);
+
+const client = new MongoClient(MONGODB_URL, {
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    }
+});
 let dbInstance = null;
 
 /**
