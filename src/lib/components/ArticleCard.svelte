@@ -13,7 +13,7 @@
 <div class="article-card">
     <h2><a href="/article/{article.id}">{article.title}</a></h2>
     <div class="article-card-meta">
-        <span class="author">作者: {article.author}</span>
+        <span class="author">作者: {article.authorName}</span>
         <span class="date">创建日期: {article.createdAt}</span>
     </div>
     <p class="article-card-summary">
