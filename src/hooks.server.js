@@ -1,6 +1,6 @@
 import { connectToDatabase, ensureIndexes } from '$lib/server/db/db';
 import { findUserById } from '$lib/server/db/userCollection';
-import { findSessionById } from '$lib/server/db/sessionCollection';
+import { findSessionById,deleteSessionById } from '$lib/server/db/sessionCollection';
 (async () => {
     try {
         console.log('Server starting: Initializing database connection and ensuring indexes...');

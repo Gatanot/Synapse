@@ -1,13 +1,5 @@
-<script lang="ts">
-    type ArticleInfo = {
-        id: string;
-        title: string;
-        author: string;
-        summary: string;
-        tags: string[];
-        createdAt: Date;
-    };
-    let { article } = $props<{ article: ArticleInfo }>();
+<script>
+    let { article } = $props();
 </script>
 
 <div class="article-card">
