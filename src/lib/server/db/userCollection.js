@@ -1,12 +1,6 @@
-import { MongoClient } from 'mongodb';
-import { MONGODB_URL, MONGODB_DB_NAME } from '$env/static/private';
-import { connectToDatabase } from './db';
+import { getCollection, ObjectId } from './db';
 const COLLECTION_NAME = 'users';
 
-async function getCollection() {
-    const db = await connectToDatabase();
-    return db.collection(COLLECTION_NAME);
-}
 
 /**
  * 创建新用户
@@ -56,7 +50,7 @@ export async function createUser(userData) {
         return { error: 'VALIDATION_ERROR', message };
     }
     try {
-        const collection = await getCollection();
+        const collection = await getCollection(COLLECTION_NAME);
 
         // 4. 检查 email 是否已存在
         const existingUser = await collection.findOne({ email: email }); // 使用 trim 后的 email 查询
@@ -109,7 +103,7 @@ export async function findUserByEmail(email) {
     }
 
     try {
-        const collection = await getCollection();
+        const collection = await getCollection(COLLECTION_NAME);
         const user = await collection.findOne({ email: normalizedEmail });
 
         if (user) {
@@ -122,6 +116,21 @@ export async function findUserByEmail(email) {
         console.error(message, error);
         return { error: 'DB_ERROR', message: 'An unexpected error occurred while fetching the user.' };
     }
+}
+
+
+/**
+ * 根据用户ID查找用户
+ * @param {string} userId
+ * @returns {Promise<object|null>}
+ */
+export async function findUserById(userId) {
+    if (!userId || !ObjectId.isValid(userId)) { // 检查ID是否有效
+        return null;
+    }
+    const usersCollection = await getCollection(COLLECTION_NAME);
+    // 注意：MongoDB _id 字段通常是 ObjectId 类型，需要转换
+    return await usersCollection.findOne({ _id: new ObjectId(userId) });
 }
 
 /**
@@ -137,7 +146,7 @@ export async function deleteUser(id) {
         return { error: 'INVALID_ID', message };
     }
     try {
-        const collection = await getCollection();
+        const collection = await getCollection(COLLECTION_NAME);
         const result = await collection.deleteOne({ _id: new ObjectId(id) });
 
         if (result.deletedCount === 0) {
