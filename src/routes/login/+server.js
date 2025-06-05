@@ -1,10 +1,8 @@
 import { findUserByEmail } from '$lib/server/db/userCollection';
 import { json } from '@sveltejs/kit';
-import { ObjectId } from 'mongodb';
+import { createSession } from '$lib/server/db/sessionCollection';
 import bcrypt from 'bcryptjs'; // <--- 引入 bcryptjs
-import crypto from 'node:crypto'; // <--- 引入 crypto 用于生成会话 ID
 
-let MOCK_SESSIONS_DB = {};
 /**
  * 验证密码 (与注册时的哈希逻辑对应)
  * @param {string} password 用户登录时提交的密码
@@ -55,15 +53,17 @@ export async function POST({ request, cookies }) {
         }
 
         // 4. 创建会话 
-        const sessionId = crypto.randomUUID();
         const sessionExpiryMs = 1000 * 60 * 60 * 24 * 7;
-        const expiresAt = new Date(Date.now() + sessionExpiryMs);
-
-        MOCK_SESSIONS_DB[sessionId] = {
-            _id: user._id.toString(),
+        const sessionUserData = {
+            name: user.name,
             email: user.email,
-            expiresAt: expiresAt.toISOString()
-        };
+            articles: user.articles
+        }
+        const { sessionId, expiresAt } = await createSession(
+            user._id.toString(),
+            sessionUserData,
+            sessionExpiryMs
+        )
 
         // 5. 设置会话 Cookie
         cookies.set('sessionId', sessionId, {
@@ -71,18 +71,12 @@ export async function POST({ request, cookies }) {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: sessionExpiryMs / 1000
+            expires: expiresAt
         });
 
         return json({
             success: true,
             message: '登录成功！',
-            user: {
-                id: user._id.toString(),
-                email: user.email,
-                name: user.name,
-                articles: user.articles,
-            }
         }, { status: 200 });
 
     } catch (error) {

@@ -1,0 +1,30 @@
+<script lang="ts">
+    type ArticleInfo = {
+        id: string;
+        title: string;
+        author: string;
+        summary: string;
+        tags: string[];
+        createdAt: Date;
+    };
+    let { article } = $props<{ article: ArticleInfo }>();
+</script>
+
+<div class="article-card">
+    <h2><a href="/article/{article.id}">{article.title}</a></h2>
+    <div class="article-card-meta">
+        <span class="author">作者: {article.author}</span>
+        <span class="date">创建日期: {article.createdAt}</span>
+    </div>
+    <p class="article-card-summary">
+        {article.summary}
+    </p>
+    {#if article.tags && article.tags.length > 0}
+        <div class="article-card-tags">
+            标签:
+            {#each article.tags as tag (tag)}
+                <span class="tag">{tag}</span>
+            {/each}
+        </div>
+    {/if}
+</div>
