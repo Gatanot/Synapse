@@ -14,18 +14,21 @@ export async function load({ locals }) {
         if (!latestArticles) {
             console.warn('Failed to fetch latest articles, returning empty array.');
             return {
-                articles: []
+                articles: [],
+                user: locals.user
             };
         }
 
         return {
-            articles: latestArticles
+            articles: latestArticles,
+            user: locals.user
         };
     } catch (err) {
         console.error('Error in homepage load function:', err);
         return {
             articles: [], // 返回空数组作为后备
-            error: 'Failed to load articles. Please try again later.' // 可以传递一个错误消息
+            error: 'Failed to load articles. Please try again later.', // 可以传递一个错误消息
+            user: locals.user
         };
     }
 }
