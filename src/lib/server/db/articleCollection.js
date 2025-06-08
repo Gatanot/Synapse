@@ -1,4 +1,4 @@
-import { getCollection, ObjectId } from './db'; // 从你的 db.js 导入
+import { getCollection, getClient, ObjectId } from './db'; // 从你的 db.js 导入
 const COLLECTION_NAME = 'articles';
 
 /**
@@ -7,7 +7,7 @@ const COLLECTION_NAME = 'articles';
  */
 export async function ensureArticleIndexes() {
     try {
-        const articlesCollection = await getCollection(COLLECTION_NAME)();
+        const articlesCollection = await getCollection(COLLECTION_NAME);
 
         // 根据 authorId 查询文章
         await articlesCollection.createIndex({ authorId: 1 });
@@ -22,68 +22,95 @@ export async function ensureArticleIndexes() {
         console.log("Index on articles.status ensured.");
 
     } catch (error) {
-        throw error
+        // 在启动脚本中，抛出错误是合适的，以便终止有问题的启动过程
+        throw error;
     }
 }
-
 /**
- * 创建一篇新文章并将其插入数据库。
+ * 创建一篇新文章，并以事务方式将其 ID 添加到对应用户的 `articles` 数组中。
  *
  * @param {Omit<ArticleSchema, '_id' | 'createdAt' | 'updatedAt' | 'comments' | 'likes' | 'status'> & { status?: 'draft' | 'published' }} articleData - 要创建的文章数据。
- *   `authorId` 应该是一个有效的 ObjectId 实例或可以转换为 ObjectId 的字符串。
- *   `createdAt`, `updatedAt` 会自动设置。
- *   `comments` 和 `likes` 默认为空数组。
- *   `status` 默认为 'draft'，除非显式提供。
- * @returns {Promise<import('mongodb').InsertOneResult | null>} MongoDB 插入操作的结果，如果发生错误则返回 null。
+ * @returns {Promise<{data: import('mongodb').InsertOneResult | null, error: {code: string, message: string} | null}>} 操作结果。
  */
 export async function createArticle(articleData) {
+    const client = getClient();
+    const session = client.startSession(); // 启动一个会话
+
     try {
-        const articlesCollection = await getCollection(COLLECTION_NAME);
-        const currentTime = new Date();
+        let creationResult = null;
 
-        // 准备要插入数据库的完整文章对象
-        /** @type {Omit<ArticleSchema, '_id'>} */
-        const newArticle = {
-            title: articleData.title,
-            summary: articleData.summary,
-            tags: articleData.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean), // 清理标签
-            authorId: new ObjectId(articleData.authorId), // 确保 authorId 是 ObjectId
-            authorName: articleData.authorName,
-            body: articleData.body,
-            createdAt: currentTime,
-            updatedAt: currentTime,
-            comments: [], // 初始化为空数组
-            status: articleData.status || 'draft', // 默认为草稿状态
-            likes: [] // 初始化为空数组
-        };
+        // 使用 withTransaction API，它会自动处理提交和中止逻辑
+        await session.withTransaction(async () => {
+            // 1. 准备并插入新文章
+            const articlesCollection = await getCollection(COLLECTION_NAME);
+            const currentTime = new Date();
+            const authorObjectId = new ObjectId(articleData.authorId);
 
-        const result = await articlesCollection.insertOne(newArticle);
+            /** @type {Omit<ArticleSchema, '_id'>} */
+            const newArticle = {
+                title: articleData.title,
+                summary: articleData.summary,
+                tags: articleData.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean),
+                authorId: authorObjectId,
+                authorName: articleData.authorName,
+                body: articleData.body,
+                createdAt: currentTime,
+                updatedAt: currentTime,
+                comments: [],
+                status: articleData.status || 'draft',
+                likes: []
+            };
 
-        if (result.insertedId) {
-            console.log(`Article created successfully with ID: ${result.insertedId}`);
-            return result;
+            const result = await articlesCollection.insertOne(newArticle, { session });
+
+            if (!result.insertedId) {
+                // 如果插入失败，抛出错误以中止事务
+                throw new Error('Article insertion did not return an insertedId.');
+            }
+
+            // 将结果保存在事务外部的变量中，以便返回
+            creationResult = result;
+            const newArticleId = result.insertedId;
+
+            // 2. 将新文章的 ID 添加到用户的 `articles` 数组
+            // 这个函数内部会处理用户未找到的情况并抛出错误，从而中止事务
+            await addArticleToUser(authorObjectId, newArticleId, { session });
+
+            console.log(`Transaction successful: Article ${newArticleId} created and linked to user ${authorObjectId}.`);
+        });
+
+        // 如果事务成功，creationResult 将会有值
+        if (creationResult) {
+            return { data: creationResult, error: null };
         } else {
-            console.warn('Article insertion did not return an insertedId.');
-            return null; // 或者可以抛出错误
+            // 理论上，如果事务成功，这里不应该被执行
+            return { data: null, error: { code: 'UNKNOWN_TRANSACTION_ERROR', message: 'Transaction completed, but result is missing.' } };
         }
 
     } catch (error) {
-        console.error('Error creating article in articleCollection:', error);
-        // 根据你的错误处理策略，这里可以返回 null，或者重新抛出错误
-        // throw error; // 如果希望调用者处理
-        return null;
+        console.error('Error during article creation transaction:', error);
+        return {
+            data: null,
+            error: {
+                code: 'TRANSACTION_ERROR',
+                message: error.message || 'An unexpected error occurred during the article creation process.'
+            }
+        };
+    } finally {
+        // 确保会话在所有操作后都关闭
+        await session.endSession();
     }
 }
+
 /**
  * 获取最新创建的指定数量的文章。
- * 默认获取10篇状态为 'published' 的文章。
  *
  * @param {object} [options={}] - 查询选项
  * @param {number} [options.limit=10] - 要获取的文章数量
  * @param {number} [options.skip=0] - 跳过的文章数量 (用于分页)
- * @param {'draft' | 'published' | 'all'} [options.status='published'] - 要获取的文章状态，'all' 表示所有状态
- * @param {boolean} [options.includeBody=false] - 是否在结果中包含完整的文章正文 (body)
- * @returns {Promise<ArticleSchemaClient[]>} 包含文章对象的数组，ObjectId 已转换为字符串。如果出错则返回空数组。
+ * @param {'draft' | 'published' | 'all'} [options.status='published'] - 要获取的文章状态
+ * @param {boolean} [options.includeBody=false] - 是否在结果中包含完整的文章正文
+ * @returns {Promise<{data: ArticleSchemaClient[], error: {code: string, message: string} | null}>} 包含文章对象的数组。
  */
 export async function getLatestArticles(options = {}) {
     const {
@@ -101,7 +128,6 @@ export async function getLatestArticles(options = {}) {
             query.status = status;
         }
 
-        // 构建投影 (projection) 来选择返回哪些字段
         const projection = {
             title: 1,
             summary: 1,
@@ -109,25 +135,22 @@ export async function getLatestArticles(options = {}) {
             authorId: 1,
             authorName: 1,
             createdAt: 1,
-            createdAt: 1,
             status: 1,
         };
 
         if (includeBody) {
             projection.body = 1;
         }
-        // 字段 _id 默认总是返回，除非显式设为 0
 
         const articlesCursor = articlesCollection
             .find(query)
             .project(projection)
-            .sort({ createdAt: -1 }) // 按创建时间降序排序 (最新的在前)
+            .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
 
         const articlesFromDb = await articlesCursor.toArray();
 
-        // 将 ObjectId 转换为字符串
         const articlesForClient = articlesFromDb.map(article => {
             /** @type {ArticleSchemaClient} */
             const clientArticle = {
@@ -135,17 +158,17 @@ export async function getLatestArticles(options = {}) {
                 _id: article._id.toString(),
                 authorId: article.authorId.toString(),
             };
-            // 如果投影中不包含 body，而原始 article 对象中有，则需要显式删除
             if (!includeBody && clientArticle.body !== undefined) {
                 delete clientArticle.body;
             }
             return clientArticle;
         });
 
-        return articlesForClient;
+        return { data: articlesForClient, error: null };
 
     } catch (error) {
         console.error('Error fetching latest articles:', error);
-        return []; // 或者可以抛出错误让调用者处理
+        // 即使出错，也返回一个空数组，保持 data 字段的类型一致性
+        return { data: null, error: { code: 'DB_ERROR', message: error.message || 'An unexpected error occurred while fetching articles.' } };
     }
 }

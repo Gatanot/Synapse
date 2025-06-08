@@ -1,6 +1,6 @@
 import { connectToDatabase, ensureIndexes } from '$lib/server/db/db';
 import { findUserById } from '$lib/server/db/userCollection';
-import { findSessionById,deleteSessionById } from '$lib/server/db/sessionCollection';
+import { findSessionById, deleteSessionById } from '$lib/server/db/sessionCollection';
 (async () => {
     try {
         console.log('Server starting: Initializing database connection and ensuring indexes...');
@@ -20,24 +20,32 @@ export async function handle({ event, resolve }) {
     event.locals.user = null; // 初始化，默认用户未登录
 
     if (sessionId) {
-        const session = await findSessionById(sessionId);
-        if (session) {
-            const user = await findUserById(session.userId.toString())
-            if (user) {
+        const { data: session, error: sessionError } = await findSessionById(sessionId);
+
+        if (sessionError) {
+            console.error('Error finding session:', sessionError.message);
+        }
+        else if (session) {
+            const { data: user, error: userError } = await findUserById(session.userId.toString());
+
+            if (userError) {
+                console.error('Error finding user associated with session:', userError.message);
+            }
+            else if (user) {
                 event.locals.user = {
-                    id: session.userId.toString(),
+                    _id: session.userId.toString(),
                     email: session.userData.email,
                     name: session.userData.name,
                     articles: session.userData.articles || []
                 };
             }
             else {
-                // 用户在数据库中找不到了，可能是个异常情况，清除会话
+                console.warn(`Data inconsistency: Session ${sessionId} found, but user ${session.userId.toString()} is missing. Cleaning up.`);
                 await deleteSessionById(sessionId);
                 event.cookies.delete('sessionId', { path: '/' });
-                event.locals.user = null;
             }
-        } else {
+        }
+        else {
             event.cookies.delete('sessionId', { path: '/' });
         }
     }

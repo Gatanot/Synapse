@@ -47,44 +47,42 @@ export async function POST({ request }) {
             password: hashedPassword,
         };
 
-        const creationResult = await createUser(newUserInput);
-        if (creationResult && creationResult.insertedId) {
-            return json({
-                success: true,
-                message: '用户注册成功！',
-                userId: creationResult.insertedId.toString()
-            }, { status: 201 });
-        } else {
-            let errorMessage = '用户注册失败，请稍后再试。';
+        const { data, error } = await createUser(newUserInput);
+
+        if (error) {
+            let errorMessage = error.message || '用户注册失败，请稍后再试。';
             let statusCode = 500;
-
-            if (creationResult && creationResult.error) {
-                errorMessage = creationResult.message;
-                switch (creationResult.error) {
-                    case 'EMAIL_EXISTS':
-                        statusCode = 409;
-                        break;
-                    case 'VALIDATION_ERROR':
-                    case 'INVALID_INPUT':
-                        statusCode = 400;
-                        break;
-                    case 'DB_ERROR':
-                    case 'DB_INSERTION_FAILED':
-                    default:
-                        statusCode = 500;
-                        break;
-                }
+            switch (error.code) {
+                case 'EMAIL_EXISTS':
+                    statusCode = 409;
+                    break;
+                case 'VALIDATION_ERROR':
+                case 'INVALID_INPUT':
+                    statusCode = 400;
+                    break;
+                case 'DB_ERROR':
+                default:
+                    statusCode = 500;
+                    break;
             }
-            else if (!creationResult) {
-                errorMessage = '用户注册失败，数据库操作未返回预期结果。';
-                statusCode = 500;
-            }
-
             return json({
                 success: false,
                 message: errorMessage
             }, { status: statusCode });
         }
+
+        if (data && data.insertedId) {
+            return json({
+                success: true,
+                message: '用户注册成功！',
+                userId: data.insertedId.toString()
+            }, { status: 201 });
+        }
+
+        return json({
+            success: false,
+            message: '用户注册失败，发生了未知的服务端错误。'
+        }, { status: 500 });
     } catch (error) {
         console.error('Error during user registration process:', error);
         return json({ success: false, message: '服务器内部错误，请稍后再试。' }, { status: 500 });
