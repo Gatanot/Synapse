@@ -1,6 +1,8 @@
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import { MONGODB_URL, MONGODB_DB_NAME } from '$env/static/private';
 import { ensureArticleIndexes } from './articleCollection';
+import { ensureSessionIndexes } from './sessionCollection';
+import { ensureUserIndexes } from './userCollection';
 if (!MONGODB_URL) {
     throw new Error('MongoDB connection string (MONGODB_URL) is not defined in environment variables.');
 }
@@ -16,7 +18,13 @@ const client = new MongoClient(MONGODB_URL, {
     }
 });
 let dbInstance = null;
-
+/**
+ * 返回 MongoClient 实例。主要用于启动事务。
+ * @returns {import('mongodb').MongoClient}
+ */
+export function getClient() {
+    return client;
+}
 /**
  * 连接数据库,返回数据库单例
  * @returns {Promise<import('mongodb').Db>}
@@ -42,32 +50,29 @@ export async function getCollection(COLLECTION_NAME) {
     const db = await connectToDatabase();
     return db.collection(COLLECTION_NAME);
 }
+
 /**
- * 检查集合索引
- * Call this function after a successful connection.
+ * 协调所有集合的索引创建过程。
+ * 这个函数在应用启动时被调用一次。
  */
 export async function ensureIndexes() {
+    console.log("Ensuring all database indexes...");
     try {
-        const db = await connectToDatabase(); // 获取数据库实例
-        const usersCollection = db.collection('users');
-        await usersCollection.createIndex({ email: 1 }, { unique: true });
-        console.log("Unique index on users.email ensured.")
-        const sessions = await getCollection('sessions');
-        // 创建 TTL 索引，MongoDB 会每隔一段时间自动删除 expiresAt 时间已过的文档
-        // `expireAfterSeconds: 0` 表示文档在 expiresAt 指定的时间点立即过期
-        await sessions.createIndex({ "expiresAt": 1 }, { expireAfterSeconds: 0 });
-        console.log("TTL index on sessions.expiresAt ensured.");
+        // 按顺序调用每个集合的索引创建函数
+        await ensureUserIndexes();
+        await ensureSessionIndexes();
         await ensureArticleIndexes();
+        console.log("All indexes have been successfully checked/created.");
     } catch (error) {
         if (error.codeName === 'IndexOptionsConflict' || error.code === 85) {
-            // 索引已存在但选项不同，或者索引已存在且不能修改 (旧版驱动可能报 code 85)
-            console.warn(`Warning ensuring indexes: ${error.message}. Index might already exist with different options or is unchanged.`);
+            console.warn(`Warning ensuring indexes: ${error.message}. An index might already exist with different options.`);
         } else if (error.codeName === 'IndexKeySpecsConflict' || error.code === 86) {
-            // 索引已存在但键规格不同
-            console.warn(`Warning ensuring indexes: ${error.message}. Index might already exist with different key specs.`);
+            console.warn(`Warning ensuring indexes: ${error.message}. An index might already exist with a different key specification.`);
         }
         else {
-            console.error("Error ensuring indexes:", error);
+            console.error("Fatal error during index creation:", error);
+            // 在启动阶段，如果索引创建失败，必须抛出错误以终止进程
+            throw error;
         }
     }
 }

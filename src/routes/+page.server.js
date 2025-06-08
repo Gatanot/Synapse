@@ -5,14 +5,14 @@ import { getLatestArticles } from '$lib/server/db/articleCollection';
 export async function load({ locals }) {
 
     try {
-        const latestArticles = await getLatestArticles({
+        const { data: articles, error } = await getLatestArticles({
             limit: 10,
             status: 'published',
             includeBody: false
         });
 
-        if (!latestArticles) {
-            console.warn('Failed to fetch latest articles, returning empty array.');
+        if (error) {
+            console.warn(`Failed to fetch latest articles: ${error.message}`);
             return {
                 articles: [],
                 user: locals.user
@@ -20,7 +20,7 @@ export async function load({ locals }) {
         }
 
         return {
-            articles: latestArticles,
+            articles,
             user: locals.user
         };
     } catch (err) {

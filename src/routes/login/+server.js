@@ -38,8 +38,16 @@ export async function POST({ request, cookies }) {
             return json({ success: false, message: '邮箱和密码不能为空。' }, { status: 400 });
         }
 
-        // 2. 查找用户 (实际应查询数据库) 
-        const user = await findUserByEmail(email)
+        // 2. 查找用户
+        const { data: user, error } = await findUserByEmail(email);
+
+        if (error) {
+            console.error('Database error while trying to find user:', error);
+            return json({
+                success: false,
+                message: '服务器内部错误，请稍后重试。'
+            }, { status: 500 });
+        }
 
         if (!user) {
             return json({ success: false, message: '邮箱或密码错误。' }, { status: 401 });
@@ -52,18 +60,28 @@ export async function POST({ request, cookies }) {
             return json({ success: false, message: '邮箱或密码错误。' }, { status: 401 });
         }
 
-        // 4. 创建会话 
+        // 4. 创建会话
         const sessionExpiryMs = 1000 * 60 * 60 * 24 * 7;
         const sessionUserData = {
             name: user.name,
             email: user.email,
             articles: user.articles
-        }
-        const { sessionId, expiresAt } = await createSession(
+        };
+        const sessionResult = await createSession(
             user._id.toString(),
             sessionUserData,
             sessionExpiryMs
-        )
+        );
+
+        if (sessionResult.error || !sessionResult.data) {
+            console.error('Session creation failed:', sessionResult.error);
+            return json({
+                success: false,
+                message: '登录失败：无法创建您的会话，请稍后重试。'
+            }, { status: 500 });
+        }
+
+        const { sessionId, expiresAt } = sessionResult.data;
 
         // 5. 设置会话 Cookie
         cookies.set('sessionId', sessionId, {

@@ -16,7 +16,7 @@ import { createArticle } from '$lib/server/db/articleCollection';
 export async function POST({ request, locals }) {
     // 1. --- 认证 ---
     // 确保用户已登录才能创建文章
-    if (!locals.user || !locals.user.id) { // 假设 locals.user 包含 id, name, email
+    if (!locals.user || !locals._id) { // 假设 locals.user 包含 id, name, email
         throw svelteKitError(401, 'Unauthorized: You must be logged in to create an article.');
     }
 
@@ -69,26 +69,32 @@ export async function POST({ request, locals }) {
         summary: clientInput.summary.trim(),
         tags: clientInput.tags, // 直接传递，createArticle 会处理
         body: clientInput.body.trim(),
-        authorId: locals.user.id, // 从会话获取用户ID
+        authorId: locals._id, // 从会话获取用户ID
         authorName: locals.user.name || locals.user.email || 'Anonymous', // 从会话获取用户名
         status: 'published',
     };
 
     // 5. --- 调用数据库操作创建文章 ---
     try {
-        const creationResult = await createArticle(articleDataForDb);
+        const creationResponse = await createArticle(articleDataForDb);
 
-        if (!creationResult || !creationResult.insertedId) {
-            console.error('Failed to create article or no insertedId returned from createArticle.');
+        if (creationResponse.error) {
+
+            console.error(`Failed to create article: [${creationResponse.error.code}] ${creationResponse.error.message}`);
+
             throw svelteKitError(500, 'Internal Server Error: Could not save the article. Please try again later.');
+        }
+
+        if (!creationResponse.data || !creationResponse.data.insertedId) {
+            console.error('Article creation transaction succeeded but no insertedId was returned.');
+            throw svelteKitError(500, 'Internal Server Error: Article may have been created, but its ID could not be confirmed.');
         }
 
         return json({
             success: true,
             message: 'Article created successfully!',
-            article_id: creationResult.insertedId.toString(),
-        }, { status: 201 }); // 201 Created
-
+            article_id: creationResponse.data.insertedId.toString(),
+        }, { status: 201 });
     } catch (err) {
         console.error('API Error creating article:', err);
         // 如果是 SvelteKit 的 error (例如上面我们 throw 的)

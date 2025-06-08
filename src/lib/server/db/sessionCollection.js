@@ -1,68 +1,104 @@
-// $lib/server/db/sessionCollection.js
 import { getCollection, ObjectId } from './db';
-import crypto from 'node:crypto'
+import crypto from 'node:crypto';
 const COLLECTION_NAME = 'sessions';
-
-
-
 /**
- * 创建一个新的会话
+ * 为 sessions 集合创建必要的索引。
+ */
+export async function ensureSessionIndexes() {
+    try {
+        const sessions = await getCollection(COLLECTION_NAME);
+        // 创建 TTL 索引，MongoDB 会自动删除过期的会话文档
+        await sessions.createIndex({ "expiresAt": 1 }, { expireAfterSeconds: 0 });
+        console.log("TTL index on sessions.expiresAt ensured.");
+    } catch (error) {
+        // 将错误向上抛出
+        throw error;
+    }
+}
+/**
+ * 创建一个新的会话。
  * @param {string} userId 用户的 ObjectId 字符串
- * @param {object} userData 要存储在会话中的用户数据 (name, email, articles)
+ * @param {object} userData 要存储在会话中的用户数据
  * @param {number} expiresInMs 会话有效时长 (毫秒)
- * @returns {Promise<{sessionId: string, expiresAt: Date}>} 返回会话ID和过期时间
+ * @returns {Promise<{data: {sessionId: string, expiresAt: Date} | null, error: {code: string, message: string} | null}>}
  */
 export async function createSession(userId, userData, expiresInMs) {
-    const sessions = await getCollection(COLLECTION_NAME);
-    const sessionId = crypto.randomUUID(); // 使用 Node.js 内置的 crypto 生成 UUID
-    const expiresAt = new Date(Date.now() + expiresInMs);
+    try {
+        const sessions = await getCollection(COLLECTION_NAME);
+        const sessionId = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + expiresInMs);
 
-    await sessions.insertOne({
-        _id: sessionId, // 使用生成的 UUID 作为会话 ID
-        userId: new ObjectId(userId), // 存储用户ID，以便后续查找
-        userData: { // 存储你希望在会话中直接获取的用户信息
-            name: userData.name,
-            email: userData.email,
-            articles: userData.articles || [] // 确保 articles 是数组
-        },
-        expiresAt: expiresAt
-    });
-    console.log(`Session created: ${sessionId} for user ${userId}, expires at ${expiresAt.toISOString()}`);
-    return { sessionId, expiresAt };
+        await sessions.insertOne({
+            _id: sessionId,
+            userId: new ObjectId(userId),
+            userData: {
+                name: userData.name,
+                email: userData.email,
+                articles: userData.articles || []
+            },
+            expiresAt: expiresAt
+        });
+
+        console.log(`Session created: ${sessionId} for user ${userId}, expires at ${expiresAt.toISOString()}`);
+        return { data: { sessionId, expiresAt }, error: null };
+    } catch (error) {
+        const message = 'An unexpected error occurred while creating the session.';
+        console.error(`Error creating session for user ${userId}: ${error.message}`, error);
+        return { data: null, error: { code: 'DB_ERROR', message } };
+    }
 }
 
 /**
- * 根据会话ID查找会话
+ * 根据会话ID查找会话。
  * @param {string} sessionId
- * @returns {Promise<object|null>} 返回会话对象或 null
+ * @returns {Promise<{data: object | null, error: {code: string, message: string} | null}>}
  */
 export async function findSessionById(sessionId) {
-    if (!sessionId) return null;
-    const sessions = await getCollection(COLLECTION_NAME);
-    const session = await sessions.findOne({ _id: sessionId });
-
-    if (!session) {
-        console.log(`Session not found: ${sessionId}`);
-        return null;
+    if (!sessionId) {
+        return { data: null, error: { code: 'INVALID_INPUT', message: 'Session ID is required.' } };
     }
 
-    if (session.expiresAt < new Date()) {
-        console.log(`Session expired: ${sessionId}. Deleting...`);
-        await deleteSessionById(sessionId); // 会话过期，顺便删除它
-        return null;
+    try {
+        const sessions = await getCollection(COLLECTION_NAME);
+        const session = await sessions.findOne({ _id: sessionId });
+
+        if (!session) {
+            console.log(`Session not found: ${sessionId}`);
+            return { data: null, error: null }; // 未找到是正常情况
+        }
+
+        if (session.expiresAt < new Date()) {
+            console.log(`Session expired: ${sessionId}. Deleting...`);
+            await deleteSessionById(sessionId); // 顺便删除，此处的错误可以忽略
+            return { data: null, error: null }; // 已过期，视为未找到
+        }
+
+        console.log(`Session found and valid: ${sessionId}`);
+        return { data: session, error: null };
+    } catch (error) {
+        const message = 'An unexpected error occurred while finding the session.';
+        console.error(`Error finding session by ID ${sessionId}: ${error.message}`, error);
+        return { data: null, error: { code: 'DB_ERROR', message } };
     }
-    console.log(`Session found and valid: ${sessionId}`);
-    return session;
 }
 
 /**
- * 根据会话ID删除会话 (用于登出或过期处理)
+ * 根据会话ID删除会话 (用于登出或过期处理)。
  * @param {string} sessionId
- * @returns {Promise<void>}
+ * @returns {Promise<{data: import('mongodb').DeleteResult | null, error: {code: string, message: string} | null}>}
  */
 export async function deleteSessionById(sessionId) {
-    if (!sessionId) return;
-    const sessions = await getCollection(COLLECTION_NAME);
-    await sessions.deleteOne({ _id: sessionId });
-    console.log(`Session deleted: ${sessionId}`);
+    if (!sessionId) {
+        return { data: null, error: { code: 'INVALID_INPUT', message: 'Session ID is required.' } };
+    }
+    try {
+        const sessions = await getCollection(COLLECTION_NAME);
+        const result = await sessions.deleteOne({ _id: sessionId });
+        console.log(`Session deleted: ${sessionId}, count: ${result.deletedCount}`);
+        return { data: result, error: null };
+    } catch (error) {
+        const message = 'An unexpected error occurred while deleting the session.';
+        console.error(`Error deleting session ${sessionId}: ${error.message}`, error);
+        return { data: null, error: { code: 'DB_ERROR', message } };
+    }
 }
