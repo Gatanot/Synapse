@@ -13,5 +13,17 @@ export interface ArticleClient {
     body?: string; // body 是可选的，取决于查询是否包含它
     createdAt: Date;
     status: ArticleStatus;
-    // 不包含 comments, likes, updatedAt 等字段，除非特别需要
+}
+// 在 src/lib/types/article.ts 中新增
+
+/**
+ * @description 从客户端请求体中接收的用于创建文章的数据。
+ * 不包含任何由服务器（如会话）添加的信息。
+ */
+export interface ArticleClientInput {
+    title: string;
+    summary: string;
+    tags: string[];
+    body: string;
+    status?: 'draft' | 'published';
 }
