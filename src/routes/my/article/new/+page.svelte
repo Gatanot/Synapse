@@ -2,24 +2,47 @@
 逻辑:接受传入的用户信息(id,name,email,article)
 界面:文章编辑页面,用户可以在此处编辑文章(包括标题,简介,标签(字符串数组),正文,),发布文章
 样式:待定 -->
-<script>
+<script lang='ts'>
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
 
+  interface User {
+    _id: string;
+    name: string;
+    email: string;
+    article: any | null;
+  }
+
+  interface Article {
+    title?: string;
+    summary?: string;
+    tags?: string[];
+    body?: string;
+  }
+
+  interface FormErrors {
+    title: string;
+    summary: string;
+    tags: string;
+    body: string;
+  }
+
   // 接收传入的用户信息和可能的文章数据
-  export let data = { user: { _id: "", name: "", email: "", article: null } };
+  export let data: { user: User; article?: Article } = { 
+    user: { _id: "", name: "", email: "", article: null } 
+  };
 
   // 表单数据
-  let title = "";
-  let summary = "";
-  let tags = [];
-  let body = "";
-  let tagInput = ""; // 临时输入的标签
-  let errorMessage = "";
-  let successMessage = "";
+  let title: string = "";
+  let summary: string = "";
+  let tags: string[] = [];
+  let body: string = "";
+  let tagInput: string = ""; // 临时输入的标签
+  let errorMessage: string = "";
+  let successMessage: string = "";
 
   // 表单错误字段
-  let errors = {
+  let errors: FormErrors = {
     title: "",
     summary: "",
     tags: "",
@@ -27,7 +50,7 @@
   };
 
   // 处理标签输入（按回车添加）
-  function handleTagInput(event) {
+  function handleTagInput(event: KeyboardEvent): void {
     if (event.key === "Enter" && tagInput.trim()) {
       if (tags.length >= 10) {
         errors.tags = "最多只能添加10个标签";
@@ -44,13 +67,13 @@
   }
 
   // 删除标签
-  function removeTag(tagToRemove) {
+  function removeTag(tagToRemove: string): void {
     tags = tags.filter((tag) => tag !== tagToRemove);
     errors.tags = "";
   }
 
   // 提交文章
-  async function submitArticle() {
+  async function submitArticle(): Promise<void> {
     // 重置错误和成功消息
     errors = { title: "", summary: "", tags: "", body: "" };
     errorMessage = "";
@@ -113,7 +136,7 @@
       } else {
         errorMessage = result.message || "发布失败，请检查输入。";
         if (result.field) {
-          errors[result.field] = result.message;
+          errors[result.field as keyof FormErrors] = result.message;
         }
       }
     } catch (err) {
@@ -274,5 +297,5 @@
 </div>
 
 <style>
-  @import "https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css";
+
 </style>

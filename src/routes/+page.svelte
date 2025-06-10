@@ -45,9 +45,9 @@
 					type="text"
 					placeholder="搜索文章..."
 					bind:value={searchQuery}
-					on:keydown={(e) => e.key === "Enter" && handleSearch()}
+					onkeydown={(e) => e.key === "Enter" && handleSearch()}
 				/>
-				<button on:click={handleSearch} aria-label="搜索">
+				<button onclick={handleSearch} aria-label="搜索">
 					搜索
 				</button>
 			</div>
@@ -68,14 +68,14 @@
 	<main class="main-content">
 		<section class="articles-header">
 			<h1>最新文章</h1>
-			<button class="create-button" on:click={handleCreateArticle}>
+			<button class="create-button" onclick={handleCreateArticle}>
 				创建新文章
 			</button>
 		</section>
 
 		{#if articles && articles.length > 0}
 			<div class="articles-grid">
-				{#each articles as article (article.id)}
+				{#each articles as article}
 					<ArticleCard {article} />
 				{/each}
 			</div>

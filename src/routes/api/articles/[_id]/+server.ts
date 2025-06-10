@@ -1,7 +1,7 @@
 // src/routes/api/articles/[id]/+server.ts
 import { json, error as svelteKitError } from '@sveltejs/kit';
 import { getArticleById, } from '$lib/server/db/articleCollection'; // 引入新函数
-import type { RequestHandler } from './$types';
+import type { RequestHandler } from '../../articles/[_id]/$types';
 import type { ArticleSchema } from '$lib/schema';
 import type { ArticleClient } from '$lib/types/client';
 
@@ -37,7 +37,7 @@ export const GET: RequestHandler = async ({ params }) => {
     if (!_id) {
         throw svelteKitError(400, 'Article ID is required.');
     }
-
+    console.log(_id)
     try {
         // 2. 调用新的数据库函数获取文章
         const result = await getArticleById(_id);
