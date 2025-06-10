@@ -155,3 +155,57 @@ export async function getLatestArticles(options: GetArticlesOptions = {}): Promi
         return { data: null, error: { code: 'DB_ERROR', message: error.message || 'An unexpected error occurred while fetching articles.' } };
     }
 }
+
+/**
+ * 根据文章 ID 获取完整的文章文档。
+ * @param {string} articleId - 要查询的文章的 _id (字符串形式)。
+ * @returns {Promise<DbResult<ArticleSchema | null>>} 包含完整文章文档或 null 的结果对象。
+ */
+export async function getArticleById(articleId: string): Promise<DbResult<ArticleSchema | null>> {
+    try {
+        // 1. 提前验证 ID 格式，提供更清晰的错误
+        if (!ObjectId.isValid(articleId)) {
+            return {
+                data: null,
+                error: {
+                    code: 'INVALID_ID_FORMAT',
+                    message: `The provided article ID '${articleId}' has an invalid format.`
+                }
+            };
+        }
+
+        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+
+        // 将字符串 ID 转换为 MongoDB 的 ObjectId
+        const objectId = new ObjectId(articleId);
+
+        // 定义查询条件
+        const query = { _id: objectId };
+
+        // 使用 findOne 查找单个文档，不使用投影以获取所有字段
+        const article = await articlesCollection.findOne(query);
+
+        // 2. 如果没有找到文章
+        if (!article) {
+            return {
+                data: null,
+                error: null
+            };
+        }
+
+        // 3. 成功，返回完整的文章文档
+        return { data: article, error: null };
+
+    } catch (error: any) {
+        console.error(`Error fetching article for ID ${articleId}:`, error);
+
+        // 4. 捕获其他数据库层面的错误
+        return {
+            data: null,
+            error: {
+                code: 'DB_ERROR',
+                message: error.message || `An unexpected error occurred while fetching article ${articleId}.`
+            }
+        };
+    }
+}

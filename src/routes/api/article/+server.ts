@@ -1,27 +1,22 @@
+// src/routes/api/articles/+server.ts (假设路径)
+
 import { json, error as svelteKitError } from '@sveltejs/kit';
 import { createArticle } from '$lib/server/db/articleCollection';
-// 从你的 db.js 导入 ObjectId 以便在需要时验证或转换
-// import { ObjectId } from '$lib/server/db/db';
+import type { RequestHandler } from './$types';
+import type { ArticleClientInput } from '$lib/types/client';
+import type { ArticleCreateShare } from '$lib/types/share';
+import type { HttpError } from '@sveltejs/kit';
 
-/**
- * @typedef {Object} ArticleClientInput
- * @property {string} title - 文章标题
- * @property {string} summary - 文章简介
- * @property {string[]} tags - 文章标签数组
- * @property {string} body - 文章正文 (Markdown 字符串)
- * @property {'draft' | 'published'} [status] - (可选) 文章状态，默认为 'published'
- */
-
-/** @type {import('./$types').RequestHandler} */
-export async function POST({ request, locals }) {
+// 使用 SvelteKit 自动生成的类型
+export const POST: RequestHandler = async ({ request, locals }) => {
     // 1. --- 认证 ---
-    // 确保用户已登录才能创建文章
-    if (!locals.user || !locals._id) { // 假设 locals.user 包含 id, name, email
+    // locals.user 现在是类型安全的 (UserClient | null)
+    if (!locals.user) {
         throw svelteKitError(401, 'Unauthorized: You must be logged in to create an article.');
     }
 
-
-    let clientInput;
+    // 2. --- 解析请求体 ---
+    let clientInput: ArticleClientInput;
     try {
         clientInput = await request.json();
     } catch (e) {
@@ -34,14 +29,14 @@ export async function POST({ request, locals }) {
     if (!clientInput.title || typeof clientInput.title !== 'string' || clientInput.title.trim() === '') {
         return json({ success: false, field: 'title', message: 'Title is required and cannot be empty.' }, { status: 400 });
     }
-    if (clientInput.title.length > 200) { // 假设标题长度限制
+    if (clientInput.title.length > 200) {
         return json({ success: false, field: 'title', message: 'Title cannot exceed 200 characters.' }, { status: 400 });
     }
 
     if (!clientInput.summary || typeof clientInput.summary !== 'string' || clientInput.summary.trim() === '') {
         return json({ success: false, field: 'summary', message: 'Summary is required and cannot be empty.' }, { status: 400 });
     }
-    if (clientInput.summary.length > 500) { // 假设简介长度限制
+    if (clientInput.summary.length > 500) {
         return json({ success: false, field: 'summary', message: 'Summary cannot exceed 500 characters.' }, { status: 400 });
     }
 
@@ -51,27 +46,24 @@ export async function POST({ request, locals }) {
     if (clientInput.tags.some(tag => tag.trim() === '')) {
         return json({ success: false, field: 'tags', message: 'Tags cannot contain empty strings. Please remove or fill them.' }, { status: 400 });
     }
-    if (clientInput.tags.length > 10) { // 假设标签数量限制
+    if (clientInput.tags.length > 10) {
         return json({ success: false, field: 'tags', message: 'You can add a maximum of 10 tags.' }, { status: 400 });
     }
-
 
     if (!clientInput.body || typeof clientInput.body !== 'string' || clientInput.body.trim() === '') {
         return json({ success: false, field: 'body', message: 'Body content is required and cannot be empty.' }, { status: 400 });
     }
 
-
     // 4. --- 准备要存入数据库的数据 ---
-    // articleCollection.js 中的 createArticle 函数会处理 tags 的 trim/toLowerCase/filter
-    // 和 authorId 的 ObjectId 转换，以及 createdAt/updatedAt 的设置。
-    const articleDataForDb = {
+    // 将客户端输入和会话用户信息组合成完整的 DTO
+    const articleDataForDb: ArticleCreateShare = {
         title: clientInput.title.trim(),
         summary: clientInput.summary.trim(),
-        tags: clientInput.tags, // 直接传递，createArticle 会处理
+        tags: clientInput.tags,
         body: clientInput.body.trim(),
-        authorId: locals._id, // 从会话获取用户ID
-        authorName: locals.user.name || locals.user.email || 'Anonymous', // 从会话获取用户名
-        status: 'published',
+        authorId: locals.user._id, // 类型安全：locals.user 在这里不为 null
+        authorName: locals.user.name, // 使用 user.name
+        status: clientInput.status || 'published', // 允许客户端设置状态
     };
 
     // 5. --- 调用数据库操作创建文章 ---
@@ -79,9 +71,8 @@ export async function POST({ request, locals }) {
         const creationResponse = await createArticle(articleDataForDb);
 
         if (creationResponse.error) {
-
             console.error(`Failed to create article: [${creationResponse.error.code}] ${creationResponse.error.message}`);
-
+            // 将内部错误包装成对客户端友好的信息
             throw svelteKitError(500, 'Internal Server Error: Could not save the article. Please try again later.');
         }
 
@@ -95,13 +86,18 @@ export async function POST({ request, locals }) {
             message: 'Article created successfully!',
             article_id: creationResponse.data.insertedId.toString(),
         }, { status: 201 });
-    } catch (err) {
+
+    } catch (err: unknown) {
         console.error('API Error creating article:', err);
-        // 如果是 SvelteKit 的 error (例如上面我们 throw 的)
-        if (err.status && err.body) {
-            throw err;
+        if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
+            // 我们可以断言它的类型以获得更好的类型提示，尽管在这里直接抛出也可以
+            throw err as HttpError;
         }
-        // 其他未知错误
-        throw svelteKitError(500, `Internal Server Error: ${err.message || 'An unexpected error occurred while creating the article.'}`);
+
+        // 对于其他所有错误，包装成一个标准的 500 错误
+        const errorMessage = (err instanceof Error)
+            ? err.message
+            : 'An unexpected error occurred while creating the article.';
+        throw svelteKitError(500, `Internal Server Error: ${errorMessage}`);
     }
 }
