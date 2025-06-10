@@ -15,7 +15,7 @@
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"@tsconfig/svelte": "^5.0.4",
 		"@types/bcryptjs": "^2.4.6",
-		"@types/node": "^22.15.30",
+		"@types/node": "^22.15.31",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.2.1",
 		"typescript": "^5.8.3",
