@@ -85,7 +85,7 @@ export async function findUserByEmail(email: string): Promise<DbResult<UserSchem
         const user = await collection.findOne({ email: normalizedEmail });
         // 找到或没找到都是成功查询, 只是 data 可能为 null
         return { data: user, error: null };
-    } catch (error) {
+    } catch (error:any) {
         const message = 'An unexpected error occurred while fetching the user.';
         console.error(`Error finding user by email '${normalizedEmail}': ${error.message}`, error);
         return { data: null, error: { code: 'DB_ERROR', message } };
@@ -108,7 +108,7 @@ export async function findUserById(userId: string): Promise<DbResult<UserSchema 
         const usersCollection = await getCollection<UserSchema>(COLLECTION_NAME);
         const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
         return { data: user, error: null };
-    } catch (error) {
+    } catch (error:any) {
         const message = 'An unexpected error occurred while fetching the user by ID.';
         console.error(`Error finding user by ID '${userId}': ${error.message}`, error);
         return { data: null, error: { code: 'DB_ERROR', message } };
@@ -137,7 +137,7 @@ export async function deleteUser(id: any): Promise<DbResult<DeleteResult>> {
         }
         return { data: result, error: null };
 
-    } catch (error) {
+    } catch (error:any) {
         const message = 'An unexpected error occurred while deleting the user.';
         console.error(`Error deleting user ${id}: ${error.message}`, error);
         return { data: null, error: { code: 'DB_ERROR', message } };

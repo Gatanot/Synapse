@@ -3,7 +3,6 @@
 import { json } from '@sveltejs/kit';
 import { createUser } from '$lib/server/db/userCollection';
 import { createSession } from '$lib/server/db/sessionCollection';
-import bcrypt from 'bcryptjs';
 import type { RequestHandler } from './$types';
 import type { UserRegisterShare } from '$lib/types/share'; // 使用我们已有的 DTO
 
@@ -58,9 +57,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
         }
 
         if (!createResult || !createResult.insertedId) {
-             return json({ success: false, message: '用户注册失败，发生了未知的服务端错误。' }, { status: 500 });
+            return json({ success: false, message: '用户注册失败，发生了未知的服务端错误。' }, { status: 500 });
         }
-        
+
         const newUserId = createResult.insertedId;
 
         // --- 注册成功后，自动创建会话并登录 ---
@@ -86,7 +85,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
                 userId: newUserId.toString()
             }, { status: 201 }); // 201 Created
         }
-        
+
         const { sessionId, expiresAt } = sessionData;
 
         // 设置会话 Cookie

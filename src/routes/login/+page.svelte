@@ -3,12 +3,12 @@
 界面:用户输入邮箱与密码并通过登录按钮登录.一个连接指向注册界面
 样式:待定 -->
 <script>
-    import { goto } from '$app/navigation';
+    import { goto } from "$app/navigation";
 
-    let email = '';
-    let password = '';
-    let errorMessage = '';
-    let errorField = '';
+    let email = "";
+    let password = "";
+    let errorMessage = "";
+    let errorField = "";
     let isLoading = false;
 
     // 邮箱格式验证正则表达式
@@ -17,35 +17,35 @@
     async function handleLogin(event) {
         event.preventDefault();
         isLoading = true;
-        errorMessage = '';
-        errorField = '';
+        errorMessage = "";
+        errorField = "";
 
         try {
             // 客户端验证
             if (!email) {
-                errorField = 'email';
-                throw new Error('请输入邮箱');
+                errorField = "email";
+                throw new Error("请输入邮箱");
             }
             if (!emailRegex.test(email)) {
-                errorField = 'email';
-                throw new Error('请输入有效的邮箱地址');
+                errorField = "email";
+                throw new Error("请输入有效的邮箱地址");
             }
             if (!password) {
-                errorField = 'password';
-                throw new Error('请输入密码');
+                errorField = "password";
+                throw new Error("请输入密码");
             }
             if (password.length < 6) {
-                errorField = 'password';
-                throw new Error('密码长度至少为6个字符');
+                errorField = "password";
+                throw new Error("密码长度至少为6个字符");
             }
 
             // 发送登录请求到后端
-            const response = await fetch('/login', {
-                method: 'POST',
+            const response = await fetch("/login", {
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json'
+                    "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password }),
             });
 
             const result = await response.json();
@@ -53,15 +53,15 @@
             if (!result.success) {
                 // 根据后端返回的错误信息设置 errorField
                 if (response.status === 401) {
-                    errorField = 'email'; // 后端返回“邮箱或密码错误”，显示在邮箱字段
+                    errorField = "email"; // 后端返回“邮箱或密码错误”，显示在邮箱字段
                 }
                 throw new Error(result.message);
             }
 
             // 登录成功，重定向到首页
-            await goto('/');
+            await goto("/");
         } catch (error) {
-            errorMessage = error.message || '登录失败，请稍后重试';
+            errorMessage = error.message || "登录失败，请稍后重试";
         } finally {
             isLoading = false;
         }
@@ -83,9 +83,9 @@
                 id="email"
                 bind:value={email}
                 placeholder="请输入邮箱"
-                class:error={errorField === 'email'}
+                class:error={errorField === "email"}
             />
-            {#if errorField === 'email' && errorMessage}
+            {#if errorField === "email" && errorMessage}
                 <span class="field-error">{errorMessage}</span>
             {/if}
         </div>
@@ -97,9 +97,9 @@
                 id="password"
                 bind:value={password}
                 placeholder="请输入密码"
-                class:error={errorField === 'password'}
+                class:error={errorField === "password"}
             />
-            {#if errorField === 'password' && errorMessage}
+            {#if errorField === "password" && errorMessage}
                 <span class="field-error">{errorMessage}</span>
             {/if}
         </div>
