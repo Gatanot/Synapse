@@ -1,0 +1,12 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "entryPoints": [
+        "./src"
+    ],
+    "entryPointStrategy": "expand",
+    "out": "docs", // 指定生成的 HTML 文件输出到 'docs' 文件夹
+    "exclude": [
+        "**/*.d.ts", // 排除所有 SvelteKit 生成的 .d.ts 文件
+        "node_modules/**"
+    ]
+}

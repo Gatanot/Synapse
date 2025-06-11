@@ -3,7 +3,7 @@
 import type { ArticleStatus } from "$lib/schema";
 
 /**
- * @description 用于创建新文章的数据传输对象 (DTO)。
+ *   用于创建新文章的数据传输对象 (DTO)。
  * 从前端表单传递到后端。
  */
 export interface ArticleCreateShare {
