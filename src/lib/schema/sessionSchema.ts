@@ -1,7 +1,7 @@
 import type { ObjectId } from 'mongodb';
 
 /**
- * @description 代表 'sessions' 集合中的文档结构。
+ *   代表 'sessions' 集合中的文档结构。
  * 用于存储用户的会话信息。
  */
 export interface SessionSchema {
