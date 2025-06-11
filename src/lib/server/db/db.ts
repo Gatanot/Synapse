@@ -4,7 +4,7 @@ import { ensureArticleIndexes } from './articleCollection';
 import { ensureUserIndexes } from './userCollection';
 import { ensureSessionIndexes } from './sessionCollection';
 /**
- * @description 代表数据库操作中结构化的错误对象。
+ *   代表数据库操作中结构化的错误对象。
  * code: 用于程序化判断的错误码。
  * message: 用于日志记录或调试的描述性信息。
  */
