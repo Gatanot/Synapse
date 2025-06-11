@@ -2,9 +2,8 @@
 逻辑:接受传入的用户信息(id,name,email,article)
 界面:文章编辑页面,用户可以在此处编辑文章(包括标题,简介,标签(字符串数组),正文,),发布文章
 样式:待定 -->
-<script lang='ts'>
+<script lang="ts">
   import { onMount } from "svelte";
-  import { goto } from "$app/navigation";
 
   interface User {
     _id: string;
@@ -28,8 +27,8 @@
   }
 
   // 接收传入的用户信息和可能的文章数据
-  export let data: { user: User; article?: Article } = { 
-    user: { _id: "", name: "", email: "", article: null } 
+  export let data: { user: User; article?: Article } = {
+    user: { _id: "", name: "", email: "", article: null },
   };
 
   // 表单数据
@@ -297,5 +296,4 @@
 </div>
 
 <style>
-
 </style>

@@ -138,7 +138,6 @@
 </main>
 
 <style>
-    
     .prose :global(p) {
         line-height: 1.8;
         margin-bottom: 1.25rem;
