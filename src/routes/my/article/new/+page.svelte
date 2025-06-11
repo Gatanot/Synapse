@@ -115,7 +115,7 @@
     };
 
     try {
-      const response = await fetch("/api/article", {
+      const response = await fetch("/api/articles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
