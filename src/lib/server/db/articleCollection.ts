@@ -209,3 +209,100 @@ export async function getArticleById(articleId: string): Promise<DbResult<Articl
         };
     }
 }
+
+/**
+ * 根据文章 ID 获取对应的作者 ID。
+ * @param {string} articleId - 要查询的文章的 _id (字符串形式)。
+ * @returns {Promise<DbResult<string | null>>} 包含作者 ID 或 null 的结果对象。
+ */
+export async function getAuthorIdById(articleId: string): Promise<DbResult<string | null>> {
+    try {
+        if (!ObjectId.isValid(articleId)) {
+            return {
+                data: null,
+                error: {
+                    code: 'INVALID_ID_FORMAT',
+                    message: `The provided article ID '${articleId}' has an invalid format.`,
+                },
+            };
+        }
+
+        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+        const objectId = new ObjectId(articleId);
+
+        // 查询仅返回 authorId 字段
+        const article = await articlesCollection.findOne(
+            { _id: objectId },
+            { projection: { authorId: 1 } }
+        );
+
+        if (!article) {
+            return { data: null, error: null };
+        }
+
+        return { data: article.authorId.toString(), error: null };
+    } catch (error: any) {
+        console.error(`Error fetching authorId for article ID ${articleId}:`, error);
+        return {
+            data: null,
+            error: {
+                code: 'DB_ERROR',
+                message: error.message || `An unexpected error occurred while fetching authorId for article ${articleId}.`,
+            },
+        };
+    }
+}
+
+/**
+ * 根据文章 ID 更新文章内容。
+ * @param {string} articleId - 要更新的文章的 _id (字符串形式)。
+ * @param {Partial<ArticleSchema>} updateData - 要更新的字段及其值。
+ * @returns {Promise<DbResult<null>>} 包含操作结果的对象。
+ */
+export async function updateArticleById(
+    articleId: string,
+    updateData: Partial<ArticleSchema>
+): Promise<DbResult<null>> {
+    try {
+        // 验证 ID 格式
+        if (!ObjectId.isValid(articleId)) {
+            return {
+                data: null,
+                error: {
+                    code: 'INVALID_ID_FORMAT',
+                    message: `The provided article ID '${articleId}' has an invalid format.`,
+                },
+            };
+        }
+
+        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+        const objectId = new ObjectId(articleId);
+
+        // 执行更新操作，将传入数据的字段更新到数据库中对应字段
+        const result = await articlesCollection.updateOne(
+            { _id: objectId },
+            { $set: { ...updateData } }
+        );
+
+        if (result.modifiedCount === 0) {
+            return {
+                data: null,
+                error: {
+                    code: 'UPDATE_FAILED',
+                    message: `Failed to update article with ID '${articleId}'.`,
+                },
+            };
+        }
+
+        return { data: null, error: null };
+    } catch (error: any) {
+        console.error(`Error updating article with ID ${articleId}:`, error);
+        return {
+            data: null,
+            error: {
+                code: 'DB_ERROR',
+                message: error.message || `An unexpected error occurred while updating article ${articleId}.`,
+            },
+        };
+    }
+}

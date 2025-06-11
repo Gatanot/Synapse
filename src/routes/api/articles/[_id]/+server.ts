@@ -1,28 +1,9 @@
 // src/routes/api/articles/[id]/+server.ts
 import { json, error as svelteKitError } from '@sveltejs/kit';
-import { getArticleById, } from '$lib/server/db/articleCollection'; // 引入新函数
-import type { RequestHandler } from '../../articles/[_id]/$types';
-import type { ArticleSchema } from '$lib/schema';
-import type { ArticleClient } from '$lib/types/client';
-
-/**
- * 将数据库的 ArticleSchema 对象转换为客户端安全的 ArticleClient 对象。
- * @param article - 从数据库获取的 ArticleSchema 对象。
- * @returns 客户端安全的 ArticleClient 对象。
- */
-function mapArticleToClient(article: ArticleSchema): ArticleClient {
-    return {
-        _id: article._id.toString(),
-        title: article.title,
-        summary: article.summary,
-        tags: article.tags,
-        authorId: article.authorId.toString(),
-        authorName: article.authorName,
-        body: article.body, // 默认包含 body
-        createdAt: article.createdAt,
-        status: article.status,
-    };
-}
+import { getArticleById, updateArticleById } from '$lib/server/db/articleCollection'; // 更新导入
+import type { RequestHandler } from '@sveltejs/kit';
+import type { ArticleClientInput } from '$lib/types/client';
+import { mapArticleToClient } from '$lib/types/share'; // 确保导入正确
 /**
  * 处理 GET 请求，根据文章 ID 返回完整的文章信息。
  * API 端点: GET /api/articles/[id]
@@ -71,6 +52,65 @@ export const GET: RequestHandler = async ({ params }) => {
         }
 
         console.error(`Unexpected error in GET /api/articles/${_id}:`, err);
+        throw svelteKitError(500, 'An unexpected server error occurred.');
+    }
+};
+/**
+ * 处理 POST 请求，根据文章 ID 更新文章内容。
+ * API 端点: POST /api/articles/[id]
+ */
+export const POST: RequestHandler = async ({ params, request, locals }) => {
+    const { _id } = params;
+
+    if (!_id) {
+        throw svelteKitError(400, 'Article ID is required.');
+    }
+
+    if (!locals.user) {
+        throw svelteKitError(401, 'Unauthorized: You must be logged in to update an article.');
+    }
+
+    let clientInput: ArticleClientInput;
+    try {
+        clientInput = await request.json();
+    } catch (error) {
+        console.error('Error parsing JSON body:', error);
+        throw svelteKitError(400, 'Invalid JSON format.');
+    }
+
+    if (!clientInput.body || typeof clientInput.body !== 'string' || clientInput.body.trim() === '') {
+        throw svelteKitError(400, 'Body content is required and cannot be empty.');
+    }
+
+    try {
+        const { data: article, error: fetchError } = await getArticleById(_id);
+
+        if (fetchError) {
+            console.error(`Error fetching article with ID ${_id}:`, fetchError);
+            throw svelteKitError(500, 'An internal server error occurred while fetching the article.');
+        }
+
+        if (!article) {
+            throw svelteKitError(404, `Article with ID ${_id} not found.`);
+        }
+
+        if (article.authorId.toString() !== locals.user._id) {
+            throw svelteKitError(403, 'You are not authorized to update this article.');
+        }
+
+        const { error: updateError } = await updateArticleById(_id, {
+            body: clientInput.body.trim(),
+            updatedAt: new Date()
+        });
+
+        if (updateError) {
+            console.error(`Error updating article with ID ${_id}:`, updateError);
+            throw svelteKitError(500, 'Failed to update the article.');
+        }
+
+        return json({ success: true, message: 'Article updated successfully.' }, { status: 200 });
+    } catch (error) {
+        console.error(`Unexpected error updating article with ID ${_id}:`, error);
         throw svelteKitError(500, 'An unexpected server error occurred.');
     }
 };
