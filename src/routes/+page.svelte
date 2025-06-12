@@ -1,21 +1,19 @@
 <script>
-	import { goto } from '$app/navigation';
-	import ArticleCard from '$lib/components/ArticleCard.svelte';
+	import { goto } from "$app/navigation";
+	import ArticleCard from "$lib/components/ArticleCard.svelte";
 
-	/** @type {import('./$types').PageData} */
-	export let data;
+	let { data } = $props(); // 使用 $props() 替代 export let data
 
-	// SvelteKit 会自动合并布局和页面的 data。
-	// 所以这里的 data 同时包含来自 +layout.server.ts 的 user
-	// 和来自 +page.server.ts 的 articles。
-	let { articles, user } = data;
+	// 使用 $derived 来获取数据
+	let articles = $derived(data.articles);
+	let user = $derived(data.user);
 
 	function handleCreateArticle() {
 		// 这里可以直接使用从布局传下来的 user 数据
 		if (user) {
-			goto('/my/articles/new');
+			goto("/my/articles/new");
 		} else {
-			goto('/login');
+			goto("/login");
 		}
 	}
 </script>
@@ -29,7 +27,9 @@
 <main class="main-content">
 	<section class="articles-header">
 		<h1>最新文章</h1>
-		<button class="create-button" on:click={handleCreateArticle}> 创建新文章 </button>
+		<button class="create-button" onclick={handleCreateArticle}>
+			创建新文章
+		</button>
 	</section>
 
 	{#if articles && articles.length > 0}
@@ -66,6 +66,11 @@
 		border-radius: 4px;
 		cursor: pointer;
 		font-weight: 500;
+		transition: background-color 0.2s;
+	}
+
+	.create-button:hover {
+		background-color: #0052a3;
 	}
 
 	.articles-grid {
