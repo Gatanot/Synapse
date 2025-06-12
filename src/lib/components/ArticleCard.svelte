@@ -5,7 +5,10 @@
 <div class="article-card">
     <h2><a href="/articles/{article._id}">{article.title}</a></h2>
     <div class="article-card-meta">
-        <span class="author">作者: {article.authorName}</span>
+        <span class="author"
+            >作者: <a href="/users/{article.authorId}">{article.authorName}</a
+            ></span
+        >
         <span class="date">创建日期: {article.createdAt}</span>
     </div>
     <p class="article-card-summary">

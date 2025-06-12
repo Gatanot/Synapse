@@ -19,7 +19,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     let { data: article, error: fetchError } = await getArticleById(_id);
 
     if (fetchError) {
-        console.error(`Error fetching article with ID ${_id}:`, fetchError.message);
         throw error(500, 'Failed to fetch article.');
     }
 

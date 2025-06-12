@@ -51,7 +51,7 @@ export async function createSession(
             },
             expiresAt: expiresAt
         };
-        
+
         await sessions.insertOne(newSession);
 
         console.log(`Session created: ${sessionId} for user ${userId}, expires at ${expiresAt.toISOString()}`);
@@ -88,8 +88,6 @@ export async function findSessionById(sessionId: string): Promise<DbResult<Sessi
             deleteSessionById(sessionId).catch(err => console.error(`Failed to delete expired session ${sessionId}`, err));
             return { data: null, error: null }; // 已过期，视为未找到
         }
-
-        console.log(`Session found and valid: ${sessionId}`);
         return { data: session, error: null };
     } catch (error: any) {
         const message = 'An unexpected error occurred while finding the session.';
