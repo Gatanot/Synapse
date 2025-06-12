@@ -284,12 +284,12 @@ export async function updateArticleById(
             { $set: { ...updateData } }
         );
 
-        if (result.modifiedCount === 0) {
+        if (result.matchedCount === 0) {
             return {
                 data: null,
                 error: {
                     code: 'UPDATE_FAILED',
-                    message: `Failed to update article with ID '${articleId}'.`,
+                    message: `Article with ID '${articleId} not found'.`,
                 },
             };
         }
@@ -302,6 +302,76 @@ export async function updateArticleById(
             error: {
                 code: 'DB_ERROR',
                 message: error.message || `An unexpected error occurred while updating article ${articleId}.`,
+            },
+        };
+    }
+}
+
+/**
+ * 根据用户 ID 获取文章列表。
+ * @param {string} userId - 用户的 ID。
+ * @param {object} options - 查询选项。
+ * @param {boolean} [options.includeBody=false] - 是否包含文章正文。
+ * @returns {Promise<DbResult<ArticleClient[]>>}
+ */
+export async function getArticlesByUserId(
+    userId: string,
+    options: { includeBody?: boolean } = {}
+): Promise<DbResult<ArticleClient[]>> {
+    const { includeBody = false } = options;
+
+    try {
+        if (!ObjectId.isValid(userId)) {
+            return {
+                data: null,
+                error: {
+                    code: 'INVALID_ID_FORMAT',
+                    message: `The provided user ID '${userId}' has an invalid format.`,
+                },
+            };
+        }
+
+        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+        const userObjectId = new ObjectId(userId);
+
+        const projection: Record<string, 1> = {
+            title: 1,
+            summary: 1,
+            tags: 1,
+            authorId: 1,
+            authorName: 1,
+            createdAt: 1,
+            status: 1,
+        };
+        if (includeBody) {
+            projection.body = 1;
+        }
+
+        const articlesFromDb = await articlesCollection
+            .find({ authorId: userObjectId })
+            .project(projection)
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        const articlesForClient: ArticleClient[] = articlesFromDb.map((article) => ({
+            _id: article._id.toString(),
+            title: article.title,
+            summary: article.summary,
+            tags: article.tags,
+            authorId: article.authorId.toString(),
+            authorName: article.authorName,
+            createdAt: article.createdAt,
+            status: article.status,
+            ...(includeBody && { body: article.body }),
+        }));
+        return { data: articlesForClient, error: null };
+    } catch (error: any) {
+        console.error(`Error fetching articles for user ID ${userId}:`, error);
+        return {
+            data: null,
+            error: {
+                code: 'DB_ERROR',
+                message: error.message || 'An unexpected error occurred while fetching articles.',
             },
         };
     }
