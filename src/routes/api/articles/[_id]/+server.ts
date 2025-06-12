@@ -59,7 +59,7 @@ export const GET: RequestHandler = async ({ params }) => {
  * 处理 POST 请求，根据文章 ID 更新文章内容。
  * API 端点: POST /api/articles/[id]
  */
-export const POST: RequestHandler = async ({ params, request, locals }) => {
+export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     const { _id } = params;
 
     if (!_id) {

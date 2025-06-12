@@ -29,5 +29,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
     let articletoclient = mapArticleToClient(article);
 
-    return { data:articletoclient };
+    return { articletoclient };
 };
