@@ -1,10 +1,12 @@
 <script>
     import { goto } from "$app/navigation";
 
-    /** @type {import('./$types').LayoutData} */
-    export let data; // 从 +layout.server.ts 接收数据 (包含 user)
+    let { data, children } = $props(); // 添加 children prop 来接收子内容
 
-    let searchQuery = "";
+    let searchQuery = $state(""); // 使用 $state() 替代 let
+
+    // 使用 $derived 来获取用户数据
+    let user = $derived(data.user);
 
     function handleSearch() {
         if (searchQuery.trim()) {
@@ -24,18 +26,16 @@
                     type="text"
                     placeholder="搜索文章..."
                     bind:value={searchQuery}
-                    on:keydown={(e) => e.key === "Enter" && handleSearch()}
+                    onkeydown={(e) => e.key === "Enter" && handleSearch()}
                 />
-                <button on:click={handleSearch} aria-label="搜索">
-                    搜索
-                </button>
+                <button onclick={handleSearch} aria-label="搜索"> 搜索 </button>
             </div>
             <ul class="nav-links">
                 <li><a href="/">首页</a></li>
                 <li><a href="/topics">主题</a></li>
-                {#if data.user}
+                {#if user}
                     <li><a href="/my/dashboard">我的面板</a></li>
-                    <li><a href="/api/logout">登出</a></li>
+                    <li><a href="/logout">登出</a></li>
                 {:else}
                     <li><a href="/login">登录</a></li>
                     <li><a href="/register">注册</a></li>
@@ -44,8 +44,8 @@
         </nav>
     </header>
 
-    <!-- 这是关键！所有页面的内容都会被渲染在这里 -->
-    <slot />
+    <!-- 使用 {@render children()} 替代 <slot /> -->
+    {@render children()}
 </div>
 
 <style>
