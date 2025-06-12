@@ -64,7 +64,7 @@ export const GET: RequestHandler = async ({ params }) => {
  *   "tags": ["sveltekit", "typescript", "mongodb"]
  * }
  */
-export const POST: RequestHandler = async ({ params, request, locals }) => {
+export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     const { _id } = params;
 
     // 1. 验证基本前提：ID 和用户认证
