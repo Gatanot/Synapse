@@ -4,18 +4,16 @@
 样式:待定 -->
 <script>
     import { goto } from "$app/navigation";
-
-    let email = "";
-    let password = "";
-    let errorMessage = "";
-    let errorField = "";
-    let isLoading = false;
+    let email = $state("");
+    let password = $state("");
+    let errorMessage = $state("");
+    let errorField = $state("");
+    let isLoading = $state(false);
 
     // 邮箱格式验证正则表达式
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    async function handleLogin(event) {
-        event.preventDefault();
+    async function handleLogin() {
         isLoading = true;
         errorMessage = "";
         errorField = "";
@@ -59,9 +57,13 @@
             }
 
             // 登录成功，重定向到首页
-            await goto("/");
+            await goto("/", { invalidateAll: true });
         } catch (error) {
-            errorMessage = error.message || "登录失败，请稍后重试";
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else {
+                errorMessage = "发生未知错误";
+            }
         } finally {
             isLoading = false;
         }
@@ -75,7 +77,7 @@
         </div>
     {/if}
 
-    <form on:submit|preventDefault={handleLogin}>
+    <form onsubmit={handleLogin}>
         <div class="form-group">
             <label for="email">邮箱:</label>
             <input
