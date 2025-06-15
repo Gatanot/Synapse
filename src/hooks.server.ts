@@ -1,8 +1,6 @@
 // src/hooks.server.ts
 
-import { connectToDatabase, ensureIndexes } from '$lib/server/db/db';
-import { findUserById } from '$lib/server/db/userCollection';
-import { findSessionById, deleteSessionById } from '$lib/server/db/sessionCollection';
+import { connectToDatabase, initializeDatabase, findUserById, findSessionById, deleteSessionById, } from '$lib/server/db';
 import type { Handle } from '@sveltejs/kit';
 import type { UserClient } from '$lib/types/client'; // 确保 UserClient 定义了我们期望的字段
 
@@ -11,8 +9,7 @@ import type { UserClient } from '$lib/types/client'; // 确保 UserClient 定义
 (async () => {
     try {
         console.log('Server starting: Initializing database connection and ensuring indexes...');
-        await connectToDatabase();
-        await ensureIndexes();
+        await initializeDatabase();
         console.log('Database connection successful and indexes ensured.');
     } catch (error) {
         console.error('CRITICAL: Failed to initialize database or ensure indexes during server startup.', error);
