@@ -1,8 +1,5 @@
 import { MongoClient, ServerApiVersion, Db, Collection, ObjectId as MongoObjectId, type Document } from 'mongodb';
 import { MONGODB_URL, MONGODB_DB_NAME } from '$env/static/private';
-import { ensureArticleIndexes } from './articleCollection';
-import { ensureUserIndexes } from './userCollection';
-import { ensureSessionIndexes } from './sessionCollection';
 /**
  *   代表数据库操作中结构化的错误对象。
  * code: 用于程序化判断的错误码。
@@ -45,8 +42,6 @@ export async function connectToDatabase(): Promise<Db> {
         await client.connect();
         console.log('Successfully connected to MongoDB.');
         dbInstance = client.db(MONGODB_DB_NAME);
-        // 在首次成功连接后，统一确保所有索引
-        await ensureIndexes();
         return dbInstance;
     } catch (e) {
         console.error('Failed to connect to MongoDB', e);
@@ -71,32 +66,6 @@ export function getClient(): MongoClient {
 export async function getCollection<T extends Document>(COLLECTION_NAME: string): Promise<Collection<T>> {
     const db = await connectToDatabase();
     return db.collection<T>(COLLECTION_NAME);
-}
-
-/**
- * 确保所有集合的索引都已创建。
- * 在数据库首次连接成功后调用。
- */
-export async function ensureIndexes() {
-    console.log("Ensuring all database indexes...");
-    try {
-        // 每个模块负责自己的索引创建逻辑
-        await ensureUserIndexes();
-        await ensureSessionIndexes();
-        await ensureArticleIndexes();
-        console.log("All indexes ensured successfully.");
-    } catch (error: any) {
-        // 集中处理常见的索引创建冲突错误
-        if (error.codeName === 'IndexOptionsConflict' || error.code === 85) {
-            console.warn(`Warning ensuring indexes: ${error.message}. Index might already exist with different options.`);
-        } else if (error.codeName === 'IndexKeySpecsConflict' || error.code === 86) {
-            console.warn(`Warning ensuring indexes: ${error.message}. Index might already exist with different key specs.`);
-        } else {
-            // 对于其他错误，向上抛出以可能中止应用启动
-            console.error("A critical error occurred during index creation:", error);
-            throw error;
-        }
-    }
 }
 
 // 重新导出 ObjectId 以方便在其他地方使用
