@@ -1,6 +1,6 @@
 <script lang="ts">
   import ArticleForm from "$lib/components/ArticleForm.svelte";
-  
+
   // 获取路由参数和加载的数据
   let { data } = $props<{
     data: {
@@ -24,7 +24,7 @@
     const response = await fetch(`/api/articles/${data.articletoclient._id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(articleData)
+      body: JSON.stringify(articleData),
     });
 
     const result = await response.json();
