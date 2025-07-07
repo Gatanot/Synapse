@@ -13,7 +13,9 @@
         >
     </div>
     <p class="article-card-summary">
-        {article.summary}
+        {article.summary.length > 30
+            ? article.summary.slice(0, 30) + '...'
+            : article.summary}
     </p>
     {#if article.tags && article.tags.length > 0}
         <div class="article-card-tags">
@@ -35,8 +37,8 @@
     .article-card {
         background-color: #ffffff; /* 卡片使用纯白背景，与浅灰页面背景形成对比 */
         border-radius: var(--border-radius-md);
-        padding: 1.5rem 2rem; /* 넉넉한 내부 여백은 고급스러움과 가독성을 높입니다. */
-        margin-bottom: 2rem; /* 카드 간의 충분한 간격을 확보하여 시각적 혼잡을 줄입니다. */
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
         box-shadow:
             0 1px 3px rgba(0, 0, 0, 0.06),
             0 2px 6px rgba(0, 0, 0, 0.04);
@@ -113,6 +115,12 @@
         margin: 0 0 1.5rem 0;
         line-height: 1.7; /* 提升阅读舒适度 */
         color: var(--text-primary);
+        min-height: calc(2 * 1.7em);
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* 核心：最多显示2行 */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     /* 
@@ -122,8 +130,13 @@
     */
     .article-card-tags {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap; /* 1. 禁止换行，强制所有标签在同一行 */
         gap: 0.5rem;
+        overflow: hidden;  /* 2. 隐藏超出容器宽度的内容 */
+        /* 渐变消失效果 */
+        position: relative;
+        -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+        mask-image: linear-gradient(to right, black 90%, transparent 100%);
     }
 
     .tag {
@@ -139,6 +152,7 @@
         cursor: pointer;
         transition: background-color var(--transition-speed) ease;
         */
+        flex-shrink: 0; /* 3. 防止标签被 Flexbox 压缩变形 */
     }
 
     /*
