@@ -16,6 +16,7 @@
     let searchResults = $derived(data.articles || []);
     let hasSearched = $derived(data.hasSearched || false);
     let errorMessage = $derived(data.error || '');
+    let paginationInfo = $derived(data.pagination || { currentPage: 1, totalPages: 0, totalResults: 0, limit: 10 });
 
     // 搜索类型选项
     const searchTypeOptions = [
@@ -116,6 +117,73 @@
             }
             goto(`/search?${params.toString()}`);
         }
+    }
+
+    // 分页导航函数
+    function goToPage(page: number) {
+        const params = new URLSearchParams();
+        params.set('q', data.searchTerm);
+        if (data.searchType && data.searchType !== 'all') {
+            params.set('type', data.searchType);
+        }
+        params.set('page', page.toString());
+        goto(`/search?${params.toString()}`);
+    }
+
+    // 上一页
+    function goToPreviousPage() {
+        if (paginationInfo.currentPage > 1) {
+            goToPage(paginationInfo.currentPage - 1);
+        }
+    }
+
+    // 下一页
+    function goToNextPage() {
+        if (paginationInfo.currentPage < paginationInfo.totalPages) {
+            goToPage(paginationInfo.currentPage + 1);
+        }
+    }
+
+    // 生成页码数组（用于分页导航）
+    function generatePageNumbers() {
+        const currentPage = paginationInfo.currentPage;
+        const totalPages = Math.max(1, paginationInfo.totalPages); // 确保至少显示1页
+        const pages: (number | string)[] = [];
+        
+        if (totalPages <= 7) {
+            // 如果总页数小于等于7，显示所有页码
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            // 总是显示第一页
+            pages.push(1);
+            
+            if (currentPage <= 4) {
+                // 当前页在前面时
+                for (let i = 2; i <= 5; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (currentPage >= totalPages - 3) {
+                // 当前页在后面时
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+            } else {
+                // 当前页在中间时
+                pages.push('...');
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            }
+        }
+        
+        return pages;
     }
 
     // 获取搜索类型显示文本
@@ -252,6 +320,65 @@
                         {#each searchResults as article (article._id)}
                             <ArticleCard {article} />
                         {/each}
+                    </div>
+
+                    <!-- 分页导航 -->
+                    <div class="pagination-container">
+                        <div class="pagination">
+                            <!-- 上一页按钮 -->
+                            <button 
+                                onclick={goToPreviousPage}
+                                disabled={paginationInfo.currentPage <= 1}
+                                class="pagination-btn pagination-prev"
+                                aria-label="上一页"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"></path>
+                                </svg>
+                                上一页
+                            </button>
+
+                            <!-- 页码按钮 -->
+                            <div class="pagination-numbers">
+                                {#each generatePageNumbers() as pageNum}
+                                    {#if pageNum === '...'}
+                                        <span class="pagination-ellipsis">...</span>
+                                    {:else}
+                                        <button 
+                                            onclick={() => goToPage(pageNum as number)}
+                                            class="pagination-btn pagination-number"
+                                            class:active={pageNum === paginationInfo.currentPage}
+                                            aria-label="第 {pageNum} 页"
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    {/if}
+                                {/each}
+                            </div>
+
+                            <!-- 下一页按钮 -->
+                            <button 
+                                onclick={goToNextPage}
+                                disabled={paginationInfo.currentPage >= paginationInfo.totalPages}
+                                class="pagination-btn pagination-next"
+                                aria-label="下一页"
+                            >
+                                下一页
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- 分页信息 -->
+                        <div class="pagination-info">
+                            <span>
+                                第 {paginationInfo.currentPage} 页，共 {Math.max(1, paginationInfo.totalPages)} 页
+                                {#if paginationInfo.totalResults}
+                                    (约 {paginationInfo.totalResults} 个结果)
+                                {/if}
+                            </span>
+                        </div>
                     </div>
                 {:else}
                     <div class="no-results">
@@ -603,6 +730,97 @@
     .articles-grid {
         display: grid;
         gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    /* 分页样式 */
+    .pagination-container {
+        margin-top: 2rem;
+        border-top: 1px solid #eee;
+        padding-top: 2rem;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .pagination-numbers {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .pagination-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ddd;
+        background: #fff;
+        color: #555;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+        text-decoration: none;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        background: #f8f9fa;
+        border-color: #0066cc;
+        color: #0066cc;
+    }
+
+    .pagination-btn:disabled {
+        color: #ccc;
+        border-color: #eee;
+        cursor: not-allowed;
+        background: #f8f9fa;
+    }
+
+    .pagination-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .pagination-number {
+        min-width: 40px;
+        justify-content: center;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .pagination-number.active {
+        background: #0066cc;
+        color: white;
+        border-color: #0066cc;
+    }
+
+    .pagination-number.active:hover {
+        background: #0052a3;
+        border-color: #0052a3;
+        color: white;
+    }
+
+    .pagination-prev,
+    .pagination-next {
+        font-weight: 500;
+    }
+
+    .pagination-ellipsis {
+        padding: 0.5rem 0.25rem;
+        color: #999;
+        font-size: 0.9rem;
+    }
+
+    .pagination-info {
+        text-align: center;
+        color: #666;
+        font-size: 0.9rem;
     }
 
     .no-results {
@@ -743,6 +961,38 @@
 
         .search-history-list {
             max-height: 200px;
+        }
+
+        /* 分页响应式 */
+        .pagination {
+            gap: 0.25rem;
+        }
+
+        .pagination-btn {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.85rem;
+        }
+
+        .pagination-number {
+            min-width: 36px;
+            padding: 0.4rem 0.5rem;
+        }
+
+        .pagination-prev,
+        .pagination-next {
+            flex-direction: column;
+            gap: 0.25rem;
+            padding: 0.4rem 0.5rem;
+        }
+
+        .pagination-prev svg,
+        .pagination-next svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .pagination-info {
+            font-size: 0.85rem;
         }
     }
 </style>
