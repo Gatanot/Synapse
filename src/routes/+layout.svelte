@@ -62,7 +62,6 @@
         -->
         <ul class="nav-links">
             <li><a href="/">首页</a></li>
-            <li><a href="/topics">主题</a></li>
             {#if user}
                 <li>
                     <a href="/my" aria-label="我的">
