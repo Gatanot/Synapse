@@ -56,7 +56,7 @@ export async function createArticle(articleData: ArticleCreateShare): Promise<Db
                 updatedAt: currentTime,
                 comments: [],
                 status: articleData.status || 'draft',
-                likes: []
+                likes:0
             };
 
             const result = await articlesCollection.insertOne(newArticle as ArticleSchema, { session });
@@ -145,6 +145,7 @@ export async function getLatestArticles(options: GetArticlesOptions = {}): Promi
             authorName: article.authorName,
             createdAt: article.createdAt,
             status: article.status,
+            likes: article.likes ?? 0,
             ...(includeBody && { body: article.body }), // 条件性地包含 body
         }));
 
@@ -288,202 +289,20 @@ export async function updateArticleById(
             return {
                 data: null,
                 error: {
-                    code: 'UPDATE_FAILED',
-                    message: `Article with ID '${articleId} not found'.`,
+                    code: 'NOT_FOUND',
+                    message: `Article with ID ${articleId} not found.`,
                 },
             };
         }
-
         return { data: null, error: null };
     } catch (error: any) {
-        console.error(`Error updating article with ID ${articleId}:`, error);
+        console.error(`Error updating article ${articleId}:`, error);
         return {
             data: null,
             error: {
                 code: 'DB_ERROR',
                 message: error.message || `An unexpected error occurred while updating article ${articleId}.`,
             },
-        };
-    }
-}
-
-/**
- * 根据用户 ID 获取文章列表。
- * @param {string} userId - 用户的 ID。
- * @param {object} options - 查询选项。
- * @param {boolean} [options.includeBody=false] - 是否包含文章正文。
- * @returns {Promise<DbResult<ArticleClient[]>>}
- */
-export async function getArticlesByUserId(
-    userId: string,
-    options: { includeBody?: boolean } = {}
-): Promise<DbResult<ArticleClient[]>> {
-    const { includeBody = false } = options;
-
-    try {
-        if (!ObjectId.isValid(userId)) {
-            return {
-                data: null,
-                error: {
-                    code: 'INVALID_ID_FORMAT',
-                    message: `The provided user ID '${userId}' has an invalid format.`,
-                },
-            };
-        }
-
-        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
-        const userObjectId = new ObjectId(userId);
-
-        const projection: Record<string, 1> = {
-            title: 1,
-            summary: 1,
-            tags: 1,
-            authorId: 1,
-            authorName: 1,
-            createdAt: 1,
-            status: 1,
-        };
-        if (includeBody) {
-            projection.body = 1;
-        }
-
-        const articlesFromDb = await articlesCollection
-            .find({ authorId: userObjectId })
-            .project(projection)
-            .sort({ createdAt: -1 })
-            .toArray();
-
-        const articlesForClient: ArticleClient[] = articlesFromDb.map((article) => ({
-            _id: article._id.toString(),
-            title: article.title,
-            summary: article.summary,
-            tags: article.tags,
-            authorId: article.authorId.toString(),
-            authorName: article.authorName,
-            createdAt: article.createdAt,
-            status: article.status,
-            ...(includeBody && { body: article.body }),
-        }));
-        return { data: articlesForClient, error: null };
-    } catch (error: any) {
-        console.error(`Error fetching articles for user ID ${userId}:`, error);
-        return {
-            data: null,
-            error: {
-                code: 'DB_ERROR',
-                message: error.message || 'An unexpected error occurred while fetching articles.',
-            },
-        };
-    }
-}
-
-/**
- * 根据搜索关键词搜索文章，支持按标题、标签、作者名、内容搜索
- * @param {string} searchTerm - 搜索关键词
- * @param {SearchOptions} options - 查询选项
- * @returns {Promise<DbResult<ArticleClient[]>>} 搜索结果
- */
-export async function searchArticles(
-    searchTerm: string, 
-    options: SearchOptions = {}
-): Promise<DbResult<ArticleClient[]>> {
-    const {
-        limit = 20,
-        skip = 0,
-        status = 'published',
-        includeBody = false,
-        searchType = 'all'
-    } = options;
-
-    try {
-        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
-
-        // 构建搜索查询
-        const baseQuery: any = status !== 'all' ? { status } : {};
-        
-        let searchConditions: any[] = [];
-        
-        // 根据搜索类型构建不同的搜索条件
-        switch (searchType) {
-            case 'title':
-                searchConditions = [
-                    { title: { $regex: searchTerm, $options: 'i' } }
-                ];
-                break;
-            case 'tags':
-                searchConditions = [
-                    { tags: { $in: [new RegExp(searchTerm, 'i')] } }
-                ];
-                break;
-            case 'author':
-                searchConditions = [
-                    { authorName: { $regex: searchTerm, $options: 'i' } }
-                ];
-                break;
-            case 'content':
-                searchConditions = [
-                    { body: { $regex: searchTerm, $options: 'i' } }
-                ];
-                break;
-            case 'all':
-            default:
-                searchConditions = [
-                    { title: { $regex: searchTerm, $options: 'i' } },
-                    { tags: { $in: [new RegExp(searchTerm, 'i')] } },
-                    { authorName: { $regex: searchTerm, $options: 'i' } },
-                    { body: { $regex: searchTerm, $options: 'i' } }
-                ];
-                break;
-        }
-
-        const searchQuery: any = {
-            ...baseQuery,
-            $or: searchConditions
-        };
-
-        const projection: Record<string, 1> = {
-            title: 1,
-            summary: 1,
-            tags: 1,
-            authorId: 1,
-            authorName: 1,
-            createdAt: 1,
-            status: 1,
-        };
-        if (includeBody) {
-            projection.body = 1;
-        }
-
-        const articlesFromDb = await articlesCollection
-            .find(searchQuery)
-            .project(projection)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .toArray();
-
-        // 将数据库文档映射为客户端安全的对象
-        const articlesForClient: ArticleClient[] = articlesFromDb.map((article): ArticleClient => ({
-            _id: article._id.toString(),
-            title: article.title,
-            summary: article.summary,
-            tags: article.tags,
-            authorId: article.authorId.toString(),
-            authorName: article.authorName,
-            createdAt: article.createdAt,
-            status: article.status,
-            ...(includeBody && { body: article.body }), // 条件性地包含 body
-        }));
-
-        return {
-            data: articlesForClient,
-            error: null
-        };
-    } catch (error: any) {
-        console.error(`Error searching articles with term "${searchTerm}":`, error);
-        return {
-            data: null,
-            error: { code: 'SEARCH_ERROR', message: error.message }
         };
     }
 }

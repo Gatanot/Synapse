@@ -11,10 +11,11 @@
         <span class="date"
             >{new Date(article.createdAt).toLocaleDateString()}</span
         >
+        <span class="likes">赞同{article.likes ?? 0}</span>
     </div>
     <p class="article-card-summary">
         {article.summary.length > 30
-            ? article.summary.slice(0, 30) + '...'
+            ? article.summary.slice(0, 30) + "..."
             : article.summary}
     </p>
     {#if article.tags && article.tags.length > 0}
@@ -132,10 +133,14 @@
         display: flex;
         flex-wrap: nowrap; /* 1. 禁止换行，强制所有标签在同一行 */
         gap: 0.5rem;
-        overflow: hidden;  /* 2. 隐藏超出容器宽度的内容 */
+        overflow: hidden; /* 2. 隐藏超出容器宽度的内容 */
         /* 渐变消失效果 */
         position: relative;
-        -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+        -webkit-mask-image: linear-gradient(
+            to right,
+            black 90%,
+            transparent 100%
+        );
         mask-image: linear-gradient(to right, black 90%, transparent 100%);
     }
 

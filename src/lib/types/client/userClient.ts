@@ -9,4 +9,5 @@ export interface UserClient {
     name: string;
     email: string;
     articles: string[]; // Explicitly define as an array of ObjectId
+    likes: string[]; // Explicitly define as an array of ObjectId
 }

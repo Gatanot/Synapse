@@ -45,6 +45,7 @@ export async function createUser(userData: UserRegisterShare): Promise<DbResult<
             email: normalizedEmail,
             password: hashedPassword, // <--- 存储哈希后的密码
             articles: [],
+            likes: [], // 新增，初始化 likes 字段
             createdAt: new Date(),
             updatedAt: new Date(),
         };
