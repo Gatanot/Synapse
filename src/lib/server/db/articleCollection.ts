@@ -376,3 +376,86 @@ export async function getArticlesByUserId(
         };
     }
 }
+
+/**
+ * 根据搜索关键词搜索文章，支持按标题、标签、作者名搜索
+ * @param {string} searchTerm - 搜索关键词
+ * @param {GetArticlesOptions} options - 查询选项
+ * @returns {Promise<DbResult<ArticleClient[]>>} 搜索结果
+ */
+export async function searchArticles(
+    searchTerm: string, 
+    options: GetArticlesOptions = {}
+): Promise<DbResult<ArticleClient[]>> {
+    const {
+        limit = 20,
+        skip = 0,
+        status = 'published',
+        includeBody = false
+    } = options;
+
+    try {
+        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+
+        // 构建搜索查询
+        const searchQuery: any = {
+            $and: [
+                // 只搜索已发布的文章（除非特别指定）
+                status !== 'all' ? { status } : {},
+                // 多字段模糊搜索
+                {
+                    $or: [
+                        { title: { $regex: searchTerm, $options: 'i' } },
+                        { tags: { $in: [new RegExp(searchTerm, 'i')] } },
+                        { authorName: { $regex: searchTerm, $options: 'i' } }
+                    ]
+                }
+            ]
+        };
+
+        const projection: Record<string, 1> = {
+            title: 1,
+            summary: 1,
+            tags: 1,
+            authorId: 1,
+            authorName: 1,
+            createdAt: 1,
+            status: 1,
+        };
+        if (includeBody) {
+            projection.body = 1;
+        }
+
+        const articlesFromDb = await articlesCollection
+            .find(searchQuery)
+            .project(projection)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .toArray();
+
+        // 将数据库文档映射为客户端安全的对象
+        const articlesForClient: ArticleClient[] = articlesFromDb.map((article): ArticleClient => ({
+            _id: article._id.toString(),
+            title: article.title,
+            summary: article.summary,
+            tags: article.tags,
+            authorId: article.authorId.toString(),
+            authorName: article.authorName,
+            createdAt: article.createdAt,
+            status: article.status,
+            ...(includeBody && { body: article.body }), // 条件性地包含 body
+        }));
+
+        return {
+            data: articlesForClient,
+            error: null
+        };
+    } catch (error: any) {
+        console.error(`Error searching articles with term "${searchTerm}":`, error);
+        return {
+            data: null,
+            error: { code: 'SEARCH_ERROR', message: error.message }
+        };
+    }
+}
