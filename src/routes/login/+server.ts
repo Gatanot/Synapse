@@ -50,6 +50,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
                 name: user.name,
                 email: user.email,
                 articles: user.articles,
+                likes: user.likes, // 新增 likes 字段
             },
             sessionExpiryMs
         );

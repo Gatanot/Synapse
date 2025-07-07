@@ -13,6 +13,7 @@ export interface ArticleClient {
     body?: string; // body 是可选的，取决于查询是否包含它
     createdAt: Date;
     status: ArticleStatus;
+    likes: number;
 }
 // 在 src/lib/types/article.ts 中新增
 

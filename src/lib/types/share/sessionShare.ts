@@ -8,6 +8,7 @@ export interface SessionUserData {
     name: string;
     email: string;
     articles: ObjectId[];
+    likes: ObjectId[]; // 新增 likes 字段
 }
 
 /**

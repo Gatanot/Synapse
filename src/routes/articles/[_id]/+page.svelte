@@ -1,14 +1,18 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import type { ArticleClient } from '$lib/types/client';
-	import { marked } from 'marked';
+	import { onMount } from "svelte";
+	import { goto } from "$app/navigation";
+	import { page } from "$app/stores";
+	import type { ArticleClient } from "$lib/types/client";
+	import type { UserClient } from "$lib/types/client";
+	import { marked } from "marked";
+
+	// 接收用户数据
+	export let data: { user: UserClient | null };
 
 	// 配置marked选项
 	marked.setOptions({
 		breaks: true,
-		gfm: true
+		gfm: true,
 	});
 
 	// 定义状态
@@ -17,15 +21,93 @@
 	let loading = true;
 	let isMarkdownMode = true; // 默认开启Markdown渲染模式
 
+	// 点赞相关状态
+	let isLiked = false;
+	let likeCount = 0;
+	let likeButtonDisabled = false;
+
 	// 从页面参数中获取文章 ID
 	$: articleId = $page.params._id;
+	$: user = data.user;
+
+	// 检查用户是否已点赞该文章
+	function checkIfLiked() {
+		if (!user || !article) return false;
+		return user.likes.includes(article._id);
+	}
+
+	// 立即发送点赞/取消点赞请求
+	async function toggleLike() {
+		if (!user || !article) {
+			// 用户未登录，显示提示
+			return;
+		}
+
+		if (likeButtonDisabled) return;
+
+		// 禁用按钮防止重复点击
+		likeButtonDisabled = true;
+
+		// 保存当前状态，以便请求失败时回滚
+		const originalIsLiked = isLiked;
+		const originalLikeCount = likeCount;
+
+		// 乐观更新UI
+		isLiked = !isLiked;
+		likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+
+		try {
+			const response = await fetch(`/api/articles/${articleId}/like`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+
+			if (!response.ok) {
+				// 请求失败，回滚UI状态
+				isLiked = originalIsLiked;
+				likeCount = originalLikeCount;
+				console.error("点赞请求失败:", response.statusText);
+				return;
+			}
+
+			const result = await response.json();
+			if (result.success) {
+				// 使用服务器返回的准确点赞数
+				likeCount = result.newLikesCount;
+				// 更新用户的点赞列表
+				if (result.action === "liked") {
+					user.likes.push(article._id);
+				} else if (result.action === "unliked") {
+					const index = user.likes.indexOf(article._id);
+					if (index > -1) {
+						user.likes.splice(index, 1);
+					}
+				}
+			} else {
+				// 服务器返回失败，回滚UI状态
+				isLiked = originalIsLiked;
+				likeCount = originalLikeCount;
+				console.error("点赞操作失败:", result.message);
+			}
+		} catch (error) {
+			// 网络错误，回滚UI状态
+			isLiked = originalIsLiked;
+			likeCount = originalLikeCount;
+			console.error("发送点赞请求时出错:", error);
+		} finally {
+			// 重新启用按钮
+			likeButtonDisabled = false;
+		}
+	}
 
 	// 格式化日期函数
 	function formatDate(isoDate: string): string {
-		return new Date(isoDate).toLocaleDateString('zh-CN', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
+		return new Date(isoDate).toLocaleDateString("zh-CN", {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
 		});
 	}
 
@@ -40,9 +122,9 @@
 				if (response.status === 404) {
 					error = `文章 ID ${articleId} 未找到`;
 				} else if (response.status === 400) {
-					error = '无效的文章 ID';
+					error = "无效的文章 ID";
 				} else {
-					error = '获取文章时发生服务器错误';
+					error = "获取文章时发生服务器错误";
 				}
 				return;
 			}
@@ -52,11 +134,15 @@
 			// 确保 createdAt 是 Date 对象（如果后端返回字符串）
 			article = {
 				...data,
-				createdAt: new Date(data.createdAt)
+				createdAt: new Date(data.createdAt),
 			};
+
+			// 初始化点赞状态
+			likeCount = article.likes || 0;
+			isLiked = checkIfLiked();
 		} catch (err) {
-			console.error('获取文章失败:', err);
-			error = '无法连接到服务器，请稍后再试';
+			console.error("获取文章失败:", err);
+			error = "无法连接到服务器，请稍后再试";
 		} finally {
 			loading = false;
 		}
@@ -64,7 +150,7 @@
 
 	// 处理返回文章列表
 	function handleBack() {
-		goto('/');
+		goto("/");
 	}
 
 	// 切换Markdown渲染模式
@@ -76,18 +162,18 @@
 	function scrollToTop() {
 		window.scrollTo({
 			top: 0,
-			behavior: 'smooth'
+			behavior: "smooth",
 		});
 	}
 
 	// 获取渲染后的Markdown内容
 	function getRenderedContent(content: string): string {
-		if (!content) return '';
+		if (!content) return "";
 		if (isMarkdownMode) {
 			try {
 				return marked.parse(content) as string;
 			} catch (error) {
-				console.error('Markdown parsing error:', error);
+				console.error("Markdown parsing error:", error);
 				return content; // 如果解析失败，返回原始内容
 			}
 		} else {
@@ -107,7 +193,9 @@
 			<div class="status-card error-card">
 				<h2>出错了</h2>
 				<p>{error}</p>
-				<button on:click={handleBack} class="action-button"> 返回首页 </button>
+				<button on:click={handleBack} class="action-button">
+					返回首页
+				</button>
 			</div>
 		{:else if article}
 			<article class="article-content">
@@ -115,9 +203,13 @@
 					<h1>{article.title}</h1>
 					<div class="article-meta">
 						<span class="author">
-							<a href="/users/{article.authorId}">{article.authorName}</a>
+							<a href="/users/{article.authorId}"
+								>{article.authorName}</a
+							>
 						</span>
-						<span class="date">{formatDate(article.createdAt.toISOString())}</span>
+						<span class="date"
+							>{formatDate(article.createdAt.toISOString())}</span
+						>
 					</div>
 					{#if article.tags && article.tags.length > 0}
 						<div class="article-tags">
@@ -145,46 +237,102 @@
 				{/if}
 			</article>
 		{/if}
-		
+
 		<!-- 悬浮工具栏 -->
 		{#if !loading && !error && article}
 			<div class="floating-toolbar">
-				<button 
+				<button
 					on:click={handleBack}
 					class="toolbar-button"
 					title="返回首页"
 					aria-label="返回首页"
 				>
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M19 12H5M12 19l-7-7 7-7"/>
+					<svg
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path d="M19 12H5M12 19l-7-7 7-7" />
 					</svg>
 				</button>
-				
-				<button 
+
+				<button
 					on:click={scrollToTop}
 					class="toolbar-button"
 					title="返回顶部"
 					aria-label="返回顶部"
 				>
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M18 15l-6-6-6 6"/>
+					<svg
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path d="M18 15l-6-6-6 6" />
 					</svg>
 				</button>
-				
+
+				<!-- 点赞按钮 -->
+				<button
+					on:click={toggleLike}
+					class="toolbar-button like-button"
+					class:liked={isLiked}
+					class:disabled={!user}
+					disabled={!user || likeButtonDisabled}
+					title={!user
+						? "登录后可以点赞"
+						: isLiked
+							? "取消点赞"
+							: "点赞"}
+					aria-label={!user
+						? "登录后可以点赞"
+						: isLiked
+							? "取消点赞"
+							: "点赞"}
+				>
+					<svg
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill={isLiked ? "currentColor" : "none"}
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+						/>
+					</svg>
+					<span class="like-count">{likeCount}</span>
+				</button>
+
 				{#if article.body}
-					<button 
+					<button
 						on:click={toggleMarkdownMode}
 						class="toolbar-button"
-						title={isMarkdownMode ? '显示源码' : '渲染 Markdown'}
-						aria-label={isMarkdownMode ? '显示源码' : '渲染 Markdown'}
+						title={isMarkdownMode ? "显示源码" : "渲染 Markdown"}
+						aria-label={isMarkdownMode
+							? "显示源码"
+							: "渲染 Markdown"}
 					>
-						{isMarkdownMode ? 'MD' : 'RAW'}
+						{isMarkdownMode ? "MD" : "RAW"}
 					</button>
 				{/if}
 			</div>
 		{/if}
 	</div>
 </main>
+
+{#if !user && !loading && !error && article}
+	<div class="login-prompt">
+		<p>登录后可以点赞文章</p>
+		<a href="/login" class="login-link">去登录</a>
+	</div>
+{/if}
 
 <style>
 	/* === 基础布局与容器 === */
@@ -326,7 +474,7 @@
 	}
 
 	.article-meta .date::before {
-		content: '·';
+		content: "·";
 		margin-right: 1.5rem;
 		font-weight: bold;
 	}
@@ -412,11 +560,11 @@
 		background-color: var(--background);
 		padding: 0.125rem 0.25rem;
 		border-radius: 4px;
-		font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+		font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
 		font-size: 0.875em;
-        overflow-wrap: break-word;
-        word-wrap: break-word;     /* 兼容旧浏览器 */
-        word-break: break-word;    /* 增强换行能力 */
+		overflow-wrap: break-word;
+		word-wrap: break-word; /* 兼容旧浏览器 */
+		word-break: break-word; /* 增强换行能力 */
 	}
 
 	.prose :global(pre) {
@@ -438,7 +586,7 @@
 		border: 1px solid var(--border-color);
 		border-radius: var(--border-radius-md);
 		padding: 1.5rem;
-		font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+		font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
 		font-size: 0.9rem;
 		line-height: 1.6;
 		color: var(--text-primary);
@@ -475,9 +623,9 @@
 		border-radius: 8px;
 		font-size: 0.875rem;
 		font-weight: 600;
-		font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+		font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
 		cursor: pointer;
-		transition: 
+		transition:
 			background-color var(--transition-speed) ease,
 			color var(--transition-speed) ease,
 			border-color var(--transition-speed) ease,
@@ -508,6 +656,84 @@
 		height: 20px;
 	}
 
+	/* === 点赞按钮特殊样式 === */
+	.like-button {
+		position: relative;
+		gap: 0.5rem;
+	}
+
+	.like-button.liked {
+		background-color: #ff6b6b;
+		color: white;
+		border-color: #ff6b6b;
+	}
+
+	.like-button.liked:hover {
+		background-color: #ff5252;
+		border-color: #ff5252;
+	}
+
+	.like-button.disabled {
+		background-color: var(--hover-bg);
+		color: var(--text-secondary);
+		border-color: var(--border-color);
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+
+	.like-button.disabled:hover {
+		background-color: var(--hover-bg);
+		color: var(--text-secondary);
+		border-color: var(--border-color);
+		transform: none;
+		box-shadow: none;
+	}
+
+	.like-count {
+		font-size: 0.75rem;
+		font-weight: 600;
+		min-width: 1rem;
+		text-align: center;
+	}
+
+	/* === 登录提示 === */
+	.login-prompt {
+		position: fixed;
+		bottom: 2rem;
+		left: 50%;
+		transform: translateX(-50%);
+		background-color: var(--surface-bg);
+		border: 1px solid var(--border-color);
+		border-radius: var(--border-radius-md);
+		padding: 1rem 1.5rem;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		z-index: 200;
+	}
+
+	.login-prompt p {
+		margin: 0;
+		color: var(--text-secondary);
+		font-size: 0.875rem;
+	}
+
+	.login-link {
+		background-color: var(--text-primary);
+		color: var(--surface-bg);
+		text-decoration: none;
+		padding: 0.5rem 1rem;
+		border-radius: var(--border-radius-sm);
+		font-size: 0.875rem;
+		font-weight: 600;
+		transition: background-color var(--transition-speed) ease;
+	}
+
+	.login-link:hover {
+		background-color: #000;
+	}
+
 	/* 更多 prose 样式可按需添加... */
 
 	.empty-content {
@@ -531,21 +757,21 @@
 		header h1 {
 			font-size: 2rem;
 		}
-		
+
 		/* 移动端悬浮工具栏调整 */
 		.floating-toolbar {
 			right: 1rem;
 			padding: 0.75rem;
 			gap: 0.5rem;
 		}
-		
+
 		.toolbar-button {
 			min-width: 2.5rem;
 			min-height: 2.5rem;
 			padding: 0.5rem;
 			font-size: 0.75rem;
 		}
-		
+
 		.toolbar-button svg {
 			width: 18px;
 			height: 18px;

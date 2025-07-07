@@ -57,7 +57,7 @@ export async function createArticle(articleData: ArticleCreateShare): Promise<Db
                 updatedAt: currentTime,
                 comments: [],
                 status: articleData.status || 'draft',
-                likes: []
+                likes:0
             };
 
             const result = await articlesCollection.insertOne(newArticle as ArticleSchema, { session });
@@ -146,6 +146,7 @@ export async function getLatestArticles(options: GetArticlesOptions = {}): Promi
             authorName: article.authorName,
             createdAt: article.createdAt,
             status: article.status,
+            likes: article.likes ?? 0,
             ...(includeBody && { body: article.body }), // 条件性地包含 body
         }));
 
@@ -289,15 +290,14 @@ export async function updateArticleById(
             return {
                 data: null,
                 error: {
-                    code: 'UPDATE_FAILED',
-                    message: `Article with ID '${articleId} not found'.`,
+                    code: 'NOT_FOUND',
+                    message: `Article with ID ${articleId} not found.`,
                 },
             };
         }
-
         return { data: null, error: null };
     } catch (error: any) {
-        console.error(`Error updating article with ID ${articleId}:`, error);
+        console.error(`Error updating article ${articleId}:`, error);
         return {
             data: null,
             error: {
@@ -306,6 +306,7 @@ export async function updateArticleById(
             },
         };
     }
+
 }
 
 /**
@@ -527,4 +528,5 @@ export async function deleteArticleById(articleId: string): Promise<DbResult<nul
             },
         };
     }
+
 }
