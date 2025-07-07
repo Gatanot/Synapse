@@ -2,14 +2,12 @@
 	import { goto } from "$app/navigation";
 	import ArticleCard from "$lib/components/ArticleCard.svelte";
 
-	let { data } = $props(); // 使用 $props() 替代 export let data
+	let { data } = $props();
 
-	// 使用 $derived 来获取数据
 	let articles = $derived(data.articles);
 	let user = $derived(data.user);
 
 	function handleCreateArticle() {
-		// 这里可以直接使用从布局传下来的 user 数据
 		if (user) {
 			goto("/my/articles/new");
 		} else {
@@ -23,11 +21,10 @@
 	<meta name="description" content="发现最新文章和思想" />
 </svelte:head>
 
-<!-- 不再需要 .container, 因为它已经在布局中了 -->
 <main class="main-content">
-	<section class="articles-header">
+	<section class="page-header">
 		<h1>最新文章</h1>
-		<button class="create-button" onclick={handleCreateArticle}>
+		<button class="primary-action-btn" onclick={handleCreateArticle}>
 			创建新文章
 		</button>
 	</section>
@@ -39,57 +36,102 @@
 			{/each}
 		</div>
 	{:else}
-		<div class="no-articles">
-			<p>暂无文章可显示</p>
+		<div class="empty-state">
+			<p>这里空空如也，不如动手创作第一篇文章？</p>
 		</div>
 	{/if}
 </main>
 
 <style>
-	/* 只保留与页面内容相关的样式 */
-	.main-content {
-		padding: 2rem 0;
-	}
-
-	.articles-header {
+	/* 
+      设计理念: 页面头部
+      - 使用 Flexbox 实现标题和操作按钮的两端对齐，这是现代Web布局的经典模式。
+      - 确保元素垂直居中，视觉上更稳定。
+      - 保持足够的底部间距，将标题区域与内容主体清晰地分开。
+    */
+	.page-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 1.5rem;
+		flex-wrap: wrap; /* 在小屏幕上允许换行 */
+		gap: 1rem;
+		margin-bottom: 2.5rem;
 	}
 
-	.create-button {
-		background-color: #0066cc;
-		color: white;
+	.page-header h1 {
+		font-size: 2.5rem;
+		font-weight: 600;
+		color: var(--text-primary);
+		margin: 0; /* 移除 h1 的默认 margin */
+	}
+
+	/* 
+      设计理念: 主要操作按钮 (Primary Action Button)
+      - 此按钮是页面上的一个主要 "Call to Action"。
+      - 它的样式必须与 "注册" 按钮和文章编辑器中的 "发布" 按钮完全一致，
+        以建立一个统一的、可预测的视觉语言。
+    */
+	.primary-action-btn {
+		display: inline-block;
+		padding: 0.75rem 1.5rem;
 		border: none;
-		padding: 0.5rem 1rem;
-		border-radius: 4px;
-		cursor: pointer;
+		border-radius: var(--border-radius-md);
+		background-color: var(--text-primary);
+		color: white; /* 或者 var(--surface-bg)，如果它是白色 */
+		font-size: 1rem;
 		font-weight: 500;
-		transition: background-color 0.2s;
+		cursor: pointer;
+		text-decoration: none; /* 确保如果未来变成<a>标签也没有下划线 */
+		transition: background-color var(--transition-speed) ease;
 	}
 
-	.create-button:hover {
-		background-color: #0052a3;
+	.primary-action-btn:hover {
+		background-color: #424242; /* 与其他主要按钮的悬停效果保持一致 */
 	}
 
+	/* 
+      设计理念: 文章网格
+      - 使用 CSS Grid 实现一个响应式的网格布局。
+      - `repeat(auto-fill, minmax(340px, 1fr))` 是核心：它会自动用最小宽度为 340px 的卡片填充可用空间。
+        当空间不足时，会自动变为单列布局，无需媒体查询即可实现优雅的响应式效果。
+      - `gap` 属性提供了统一、干净的间距。
+    */
 	.articles-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 1.5rem;
+		grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+		gap: 2rem;
 	}
 
-	.no-articles {
+	/* 
+      设计理念: 空状态 (Empty State)
+      - 空状态是界面的一部分，需要被设计，而不仅仅是显示一行文字。
+      - 遵循 “人文关怀” 原则，提示文案应友好且具有引导性。
+      - 视觉上，它应该是低调的，不刺眼的。使用次要文本颜色和柔和的背景/边框。
+    */
+	.empty-state {
 		text-align: center;
-		padding: 3rem 0;
-		color: #666;
+		padding: 4rem 2rem;
+		background-color: #ffffff; /* 使用与卡片相同的背景色，感觉像一个“空卡片” */
+		border: 1px dashed var(--border-color); /* 虚线边框暗示这是一个占位符/待填充区域 */
+		border-radius: var(--border-radius-md);
 	}
 
-	@media (max-width: 768px) {
-		.articles-header {
+	.empty-state p {
+		margin: 0;
+		font-size: 1.1rem;
+		color: var(--text-secondary);
+		line-height: 1.7;
+	}
+
+	/* 
+      设计理念: 响应式微调
+      - 虽然网格本身是响应式的，但我们可以在小屏幕上调整页面头部的布局，
+        使其从水平排列变为垂直堆叠，以获得更好的阅读流。
+    */
+	@media (max-width: 520px) {
+		.page-header {
 			flex-direction: column;
-			gap: 1rem;
-			align-items: flex-start;
+			align-items: flex-start; /* 左对齐 */
 		}
 	}
 </style>
