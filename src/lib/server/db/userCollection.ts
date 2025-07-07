@@ -180,3 +180,85 @@ export async function addArticleToUser(
     return result;
 }
 
+/**
+ * 更新用户的基本信息（用户名和邮箱）。
+ * @param {string} userId - 用户的ID。
+ * @param {object} updateData - 要更新的数据。
+ * @param {string} [updateData.name] - 新的用户名。
+ * @param {string} [updateData.email] - 新的邮箱地址。
+ * @returns {Promise<DbResult<UpdateResult>>}
+ */
+export async function updateUserProfile(
+    userId: string, 
+    updateData: { name?: string; email?: string }
+): Promise<DbResult<UpdateResult>> {
+    if (!userId || !ObjectId.isValid(userId)) {
+        const message = `Invalid ObjectId format for user ID: ${userId}`;
+        console.warn(message);
+        return { data: null, error: { code: 'INVALID_ID', message } };
+    }
+
+    if (!updateData.name && !updateData.email) {
+        const message = 'No update data provided.';
+        console.warn(message);
+        return { data: null, error: { code: 'INVALID_INPUT', message } };
+    }
+
+    try {
+        const collection = await getCollection<UserSchema>(COLLECTION_NAME);
+        
+        // 构建更新对象
+        const updateFields: Partial<UserSchema> = {
+            updatedAt: new Date()
+        };
+
+        if (updateData.name) {
+            updateFields.name = updateData.name.trim();
+        }
+
+        if (updateData.email) {
+            const normalizedEmail = updateData.email.trim().toLowerCase();
+            
+            // 验证邮箱格式
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(normalizedEmail)) {
+                const message = `Invalid email format: ${updateData.email}`;
+                console.warn(message);
+                return { data: null, error: { code: 'VALIDATION_ERROR', message } };
+            }
+
+            // 检查邮箱是否已被其他用户使用
+            const existingUser = await collection.findOne({ 
+                email: normalizedEmail,
+                _id: { $ne: new ObjectId(userId) } // 排除当前用户
+            });
+            
+            if (existingUser) {
+                const message = `Email '${normalizedEmail}' is already in use by another user.`;
+                console.warn(message);
+                return { data: null, error: { code: 'EMAIL_EXISTS', message } };
+            }
+
+            updateFields.email = normalizedEmail;
+        }
+
+        const result = await collection.updateOne(
+            { _id: new ObjectId(userId) },
+            { $set: updateFields }
+        );
+
+        if (result.matchedCount === 0) {
+            const message = `User with ID '${userId}' not found.`;
+            console.warn(message);
+            return { data: null, error: { code: 'NOT_FOUND', message } };
+        }
+
+        return { data: result, error: null };
+
+    } catch (error: any) {
+        const message = 'An unexpected error occurred while updating user profile.';
+        console.error(`Error updating user profile for ID '${userId}': ${error.message}`, error);
+        return { data: null, error: { code: 'DB_ERROR', message } };
+    }
+}
+
