@@ -63,7 +63,7 @@
             <li><a href="/topics">主题</a></li>
             {#if user}
                 <li>
-                    <a href="/my/dashboard" aria-label="我的">
+                    <a href="/my" aria-label="我的">
                         <span class="nav-link-text">我的</span>
                     </a>
                 </li>

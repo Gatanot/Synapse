@@ -77,7 +77,7 @@
         </div>
     {/if}
 
-    <form onsubmit={handleLogin}>
+    <form on:submit|preventDefault={handleLogin}>
         <div class="form-group">
             <label for="email">邮箱:</label>
             <input
@@ -113,6 +113,9 @@
 
     <div class="register-link">
         没有账户? <a href="/register">前往注册</a>
+    </div>
+    <div class="reset-link">
+        <a href="/password/reset" on:click|preventDefault={() => goto(`/password/reset?email=${encodeURIComponent(email)}`)}>忘记密码？</a>
     </div>
 </div>
 
@@ -172,6 +175,10 @@
     }
 
     .register-link {
+        margin-top: 15px;
+        text-align: center;
+    }
+    .reset-link {
         margin-top: 15px;
         text-align: center;
     }
