@@ -10,11 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { MongoClient, Db } from 'mongodb';
 
-// 只需要 mock 环境变量
-vi.mock('$env/static/private', () => ({
-    MONGODB_URL: process.env.MONGODB_URL,
-    MONGODB_DB_NAME: process.env.MONGODB_DB_NAME,
-}));
+// 已全局 mock，无需在此文件 mock
 
 describe('数据库核心连接 (db.ts)', () => {
 
@@ -39,7 +35,7 @@ describe('数据库核心连接 (db.ts)', () => {
         const db2 = await connectToDatabase();
         expect(db1).toBe(db2);
     });
-    
+
     it('getClient 应返回 MongoClient 实例', async () => {
         const { getClient } = await import('$lib/server/db');
         expect(getClient()).toBeInstanceOf(MongoClient);
