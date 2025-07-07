@@ -1,17 +1,20 @@
 import { searchArticles } from '$lib/server/db';
 import type { ServerLoad } from '@sveltejs/kit';
+import type { SearchType } from '$lib/types/server';
 
 /**
  * 搜索页面的服务端数据加载
  */
 export const load: ServerLoad = async ({ url }) => {
     const searchTerm = url.searchParams.get('q');
+    const searchType = (url.searchParams.get('type') as SearchType) || 'all';
 
     // 如果没有搜索关键词，返回空结果
     if (!searchTerm || searchTerm.trim().length === 0) {
         return {
             articles: [],
             searchTerm: '',
+            searchType: 'all',
             hasSearched: false
         };
     }
@@ -23,7 +26,8 @@ export const load: ServerLoad = async ({ url }) => {
                 limit: 20,
                 skip: 0,
                 status: 'published',
-                includeBody: false
+                includeBody: false,
+                searchType
             }
         );
 
@@ -32,6 +36,7 @@ export const load: ServerLoad = async ({ url }) => {
             return {
                 articles: [],
                 searchTerm: searchTerm.trim(),
+                searchType,
                 hasSearched: true,
                 error: 'Search failed. Please try again.'
             };
@@ -40,6 +45,7 @@ export const load: ServerLoad = async ({ url }) => {
         return {
             articles: articles || [],
             searchTerm: searchTerm.trim(),
+            searchType,
             hasSearched: true
         };
 
@@ -48,6 +54,7 @@ export const load: ServerLoad = async ({ url }) => {
         return {
             articles: [],
             searchTerm: searchTerm.trim(),
+            searchType,
             hasSearched: true,
             error: 'An unexpected error occurred during search.'
         };

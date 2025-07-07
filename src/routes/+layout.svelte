@@ -9,6 +9,8 @@
     function handleSearch() {
         if (searchQuery.trim()) {
             goto(`/search?q=${encodeURIComponent(searchQuery)}`);
+            // 清除搜索框内容
+            searchQuery = "";
         }
     }
 </script>
