@@ -5,7 +5,7 @@ import { addArticleToUser } from './userCollection'; // 假设它在同一目录
 import type { ArticleSchema, ArticleStatus } from '$lib/schema';
 import type { ArticleCreateShare } from '$lib/types/share';
 import type { ArticleClient, } from '$lib/types/client';
-import type { GetArticlesOptions } from '$lib/types/server';
+import type { GetArticlesOptions, SearchOptions } from '$lib/types/server';
 import type { DbResult } from '$lib/schema/db';
 import type { InsertOneResult } from 'mongodb';
 
@@ -378,39 +378,67 @@ export async function getArticlesByUserId(
 }
 
 /**
- * 根据搜索关键词搜索文章，支持按标题、标签、作者名搜索
+ * 根据搜索关键词搜索文章，支持按标题、标签、作者名、内容搜索
  * @param {string} searchTerm - 搜索关键词
- * @param {GetArticlesOptions} options - 查询选项
+ * @param {SearchOptions} options - 查询选项
  * @returns {Promise<DbResult<ArticleClient[]>>} 搜索结果
  */
 export async function searchArticles(
     searchTerm: string, 
-    options: GetArticlesOptions = {}
+    options: SearchOptions = {}
 ): Promise<DbResult<ArticleClient[]>> {
     const {
         limit = 20,
         skip = 0,
         status = 'published',
-        includeBody = false
+        includeBody = false,
+        searchType = 'all'
     } = options;
 
     try {
         const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
 
         // 构建搜索查询
+        const baseQuery: any = status !== 'all' ? { status } : {};
+        
+        let searchConditions: any[] = [];
+        
+        // 根据搜索类型构建不同的搜索条件
+        switch (searchType) {
+            case 'title':
+                searchConditions = [
+                    { title: { $regex: searchTerm, $options: 'i' } }
+                ];
+                break;
+            case 'tags':
+                searchConditions = [
+                    { tags: { $in: [new RegExp(searchTerm, 'i')] } }
+                ];
+                break;
+            case 'author':
+                searchConditions = [
+                    { authorName: { $regex: searchTerm, $options: 'i' } }
+                ];
+                break;
+            case 'content':
+                searchConditions = [
+                    { body: { $regex: searchTerm, $options: 'i' } }
+                ];
+                break;
+            case 'all':
+            default:
+                searchConditions = [
+                    { title: { $regex: searchTerm, $options: 'i' } },
+                    { tags: { $in: [new RegExp(searchTerm, 'i')] } },
+                    { authorName: { $regex: searchTerm, $options: 'i' } },
+                    { body: { $regex: searchTerm, $options: 'i' } }
+                ];
+                break;
+        }
+
         const searchQuery: any = {
-            $and: [
-                // 只搜索已发布的文章（除非特别指定）
-                status !== 'all' ? { status } : {},
-                // 多字段模糊搜索
-                {
-                    $or: [
-                        { title: { $regex: searchTerm, $options: 'i' } },
-                        { tags: { $in: [new RegExp(searchTerm, 'i')] } },
-                        { authorName: { $regex: searchTerm, $options: 'i' } }
-                    ]
-                }
-            ]
+            ...baseQuery,
+            $or: searchConditions
         };
 
         const projection: Record<string, 1> = {

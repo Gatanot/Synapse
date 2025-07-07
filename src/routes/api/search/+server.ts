@@ -1,6 +1,7 @@
 import { searchArticles } from '$lib/server/db';
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
+import type { SearchType } from '$lib/types/server';
 
 /**
  * GET /api/search
@@ -10,6 +11,7 @@ export const GET = async ({ url }: RequestEvent) => {
     const searchTerm = url.searchParams.get('q');
     const limitParam = url.searchParams.get('limit');
     const skipParam = url.searchParams.get('skip');
+    const searchType = (url.searchParams.get('type') as SearchType) || 'all';
 
     // 验证搜索关键词
     if (!searchTerm || searchTerm.trim().length === 0) {
@@ -33,7 +35,8 @@ export const GET = async ({ url }: RequestEvent) => {
                 limit: Math.min(limit, 50), // 限制最大返回数量
                 skip: Math.max(skip, 0),
                 status: 'published', // 只搜索已发布的文章
-                includeBody: false // 搜索结果不包含文章内容
+                includeBody: false, // 搜索结果不包含文章内容
+                searchType
             }
         );
 
@@ -51,6 +54,7 @@ export const GET = async ({ url }: RequestEvent) => {
         return json({
             articles: articles || [],
             searchTerm: searchTerm.trim(),
+            searchType,
             total: articles?.length || 0
         });
 
