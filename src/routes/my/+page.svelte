@@ -15,11 +15,6 @@ function toResetPassword()
 {
    goto("/password/reset");
 }
-
-function toForgetPassword()
-{
-   goto("/password/forget");
-}
 </script>
 <div>
     用户名: {data.user?.name}
@@ -56,15 +51,5 @@ function toForgetPassword()
     class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
     >
     重设密码
-    </button>
-</div>
-
-<div>
-<button
-    type="button"
-    on:click={toResetPassword}
-    class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
-    >
-    找回密码
     </button>
 </div>
