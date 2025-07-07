@@ -46,9 +46,9 @@ export const handle: Handle = async ({ event, resolve }) => {
                     email: user.email, // 我们从 user schema 中获取 email
                     name: user.name,   // 和 name，而不是 session.userData，以保证数据最新
                     // articles 数组中的 ObjectId 需要转换为字符串
-                    articles: user.articles.map(id => id.toString()),
-                    // likes 数组中的 ObjectId 需要转换为字符串
-                    likes: user.likes.map(id => id.toString())
+                    articles: user.articles?.map(id => id.toString()) || [],
+                    // likes 数组中的 ObjectId 需要转换为字符串，如果字段不存在则使用空数组
+                    likes: user.likes?.map(id => id.toString()) || []
                 };
                 event.locals.user = userForClient;
 
