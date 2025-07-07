@@ -5,9 +5,43 @@
     let email = '';
     let username = '';
     let password = '';
+
+    let code = '';
+    let codeSent = false;
+    let codeCountdown = 0;
     let errorMessage: string | null = null;
     let errorField: string | null = null;   // 用于存储哪个字段出错了，如果API返回此信息
     let isLoading = false; // 防止重复提交
+
+    async function handleSendCode() {
+        errorMessage = null;
+        errorField = null;
+        if (!email.includes('@')) {
+            errorMessage = '请先输入有效邮箱';
+            errorField = 'email';
+            return;
+        }
+        try {
+            const res = await fetch('/api/verify-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, action: 'send' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                codeSent = true;
+                codeCountdown = 60;
+                const timer = setInterval(() => {
+                    codeCountdown--;
+                    if (codeCountdown <= 0) clearInterval(timer);
+                }, 1000);
+            } else {
+                errorMessage = data.message;
+            }
+        } catch (err) {
+            errorMessage = '验证码发送失败，请稍后再试。';
+        }
+    }
 
     async function handleSubmit() {
         isLoading = true;
@@ -21,7 +55,7 @@
             isLoading = false;
             return;
         }
-        if (username.trim().length < 2) { // 假设用户名至少2个字符
+        if (username.trim().length < 2) {
             errorMessage = '用户名至少需要2个字符。';
             errorField = 'username';
             isLoading = false;
@@ -33,7 +67,35 @@
             isLoading = false;
             return;
         }
+        if (!code) {
+            errorMessage = '请填写验证码。';
+            errorField = 'code';
+            isLoading = false;
+            return;
+        }
 
+        // 校验验证码
+        try {
+            const verifyRes = await fetch('/api/verify-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, code, action: 'verify' })
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyData.success) {
+                errorMessage = verifyData.message || '验证码校验失败';
+                errorField = 'code';
+                isLoading = false;
+                return;
+            }
+        } catch (err) {
+            errorMessage = '验证码校验失败，请稍后再试。';
+            errorField = 'code';
+            isLoading = false;
+            return;
+        }
+
+        // 验证码通过后再注册
         try {
             const response = await fetch('/register', {
                 method: 'POST',
@@ -51,7 +113,6 @@
             if (response.ok && data.success) {
                 await goto('/');
             } else {
-                // 注册失败
                 errorMessage = data.message || '注册失败，请检查您的输入或稍后再试。';
                 if (data.field) {
                     errorField = data.field;
@@ -92,8 +153,26 @@
                 aria-describedby={(errorField === 'email' && errorMessage) ? 'email-error' : null}
                 class:invalid={errorField === 'email' && errorMessage}
             />
+            <button type="button" on:click={handleSendCode} disabled={codeCountdown > 0} style="margin-left:8px;">
+                {codeCountdown > 0 ? `重新发送(${codeCountdown})` : '发送验证码'}
+            </button>
             {#if errorField === 'email' && errorMessage}
                 <small id="email-error" class="field-error">{errorMessage}</small>
+            {/if}
+        </div>
+        <div>
+            <label for="code">验证码:</label>
+            <input
+                type="text"
+                id="code"
+                name="code"
+                bind:value={code}
+                required
+                aria-describedby={(errorField === 'code' && errorMessage) ? 'code-error' : null}
+                class:invalid={errorField === 'code' && errorMessage}
+            />
+            {#if errorField === 'code' && errorMessage}
+                <small id="code-error" class="field-error">{errorMessage}</small>
             {/if}
         </div>
         <div>

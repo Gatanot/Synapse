@@ -96,7 +96,11 @@
             </div>
 
             <div class="form-group">
-                <label for="password">密码</label>
+                <!-- 将label和“忘记密码”链接放在同一行 -->
+                <div class="form-label-group">
+                    <label for="password">密码</label>
+                    <a href="/password/reset" class="form-link" >忘记密码？</a>
+                </div>
                 <input
                     type="password"
                     id="password"
@@ -159,7 +163,6 @@
         font-size: 1.75rem;
         font-weight: 600;
         color: var(--text-primary);
-        /* 移除 text-align: center; 以建立左对齐轴 */
         margin: 0 0 2rem 0;
     }
 
@@ -167,18 +170,35 @@
         margin-bottom: 1.5rem;
     }
 
-    .form-group label {
-        display: block;
+    /* 
+      新增: 用于容纳并排的label和链接 
+    */
+    .form-label-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
         margin-bottom: 0.5rem;
+    }
+
+    .form-label-group label {
         font-weight: 500;
         color: var(--text-primary);
     }
 
     /* 
-      设计理念: 统一的输入框样式
-      - 完全复用文章编辑器中的 .form-input 样式，确保全站输入体验的一致性。
-      - 这是设计系统价值的核心体现。
+      新增: “忘记密码”链接样式，符合次要操作的设计原则
     */
+    .form-link {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color var(--transition-speed) ease;
+    }
+    .form-link:hover {
+        text-decoration: underline;
+        color: var(--text-primary);
+    }
+
     .form-input {
         width: 100%;
         box-sizing: border-box; /* 确保padding和border包含在width内 */
@@ -211,12 +231,6 @@
         font-size: 0.875rem;
     }
 
-    /* 
-      设计理念: 明确的主要操作
-      - 登录按钮是此页面的唯一主要操作，必须醒目且易于点击。
-      - 样式与 "注册"、"发布文章" 等按钮完全一致。
-      - 默认占满整个宽度，方便移动端用户点击。
-    */
     .submit-btn {
         display: inline-flex;
         align-items: center;
@@ -242,14 +256,8 @@
         cursor: wait; /* 使用等待光标，提供清晰的加载反馈 */
     }
 
-    /* 
-      设计理念: 次要操作
-      - 注册链接是次要操作，不应与主按钮竞争。
-      - 将其放置在卡片底部，使用中性颜色，视觉上更轻。
-    */
     .secondary-action {
         margin-top: 2rem;
-        /* 移除 text-align: center; 以建立左对齐轴 */
     }
     .secondary-action p {
         margin: 0;
@@ -264,10 +272,6 @@
         text-decoration: underline;
     }
 
-    /* 
-      设计理念: 全局提示框
-      - 复用已定义的 alert 样式，确保反馈信息在全站表现一致。
-    */
     .alert {
         padding: 1rem 1.5rem;
         margin-bottom: 1.5rem;
@@ -280,7 +284,7 @@
         border-color: color-mix(in srgb, var(--error-color, #d32f2f) 40%, transparent);
     }
     
-    /* 简单的加载中 spinner */
+    /* 保留了加载 spinner 的样式 */
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
