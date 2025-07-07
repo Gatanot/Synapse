@@ -1,7 +1,8 @@
+
 // src/routes/api/articles/+server.ts (假设路径)
 
 import { json, error as svelteKitError } from '@sveltejs/kit';
-import { createArticle } from '$lib/server/db/articleCollection';
+import { createArticle, getArticleById, deleteArticleById } from '$lib/server/db/articleCollection';
 import type { RequestHandler } from './$types';
 import type { ArticleClientInput } from '$lib/types/client';
 import type { ArticleCreateShare } from '$lib/types/share';
@@ -100,4 +101,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             : 'An unexpected error occurred while creating the article.';
         throw svelteKitError(500, `Internal Server Error: ${errorMessage}`);
     }
+
+
 }
+// 删除文章
+export const DELETE = async function ({ url, locals }: { url: URL; locals: any }) {
+    if (!locals.user) {
+        throw svelteKitError(401, 'Unauthorized: You must be logged in to delete an article.');
+    }
+    const id = url.searchParams.get('_id');
+    if (!id) {
+        return json({ success: false, message: 'Missing _id parameter.' }, { status: 400 });
+    }
+    const { data: article, error } = await getArticleById(id);
+    if (error || !article) {
+        return json({ success: false, message: 'Article not found.' }, { status: 404 });
+    }
+    // 注意 authorId 可能是 ObjectId 类型
+    if (article.authorId && article.authorId.toString() !== locals.user._id) {
+        return json({ success: false, message: 'You are not the author of this article.' }, { status: 403 });
+    }
+    const { error: delError } = await deleteArticleById(id);
+    if (delError) {
+        return json({ success: false, message: 'Failed to delete article.' }, { status: 500 });
+    }
+    return json({ success: true }, { status: 200 });
+};

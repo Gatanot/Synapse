@@ -1,3 +1,4 @@
+
 // src/lib/server/db/articleCollection.ts
 
 import { getCollection, getClient, ObjectId } from './db';
@@ -484,6 +485,46 @@ export async function searchArticles(
         return {
             data: null,
             error: { code: 'SEARCH_ERROR', message: error.message }
+        };
+    }
+}
+/**
+ * 根据文章 ID 删除文章
+ * @param {string} articleId - 要删除的文章的 _id (字符串形式)
+ * @returns {Promise<DbResult<null>>} 删除结果
+ */
+export async function deleteArticleById(articleId: string): Promise<DbResult<null>> {
+    try {
+        if (!ObjectId.isValid(articleId)) {
+            return {
+                data: null,
+                error: {
+                    code: 'INVALID_ID_FORMAT',
+                    message: `The provided article ID '${articleId}' has an invalid format.`,
+                },
+            };
+        }
+        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+        const objectId = new ObjectId(articleId);
+        const result = await articlesCollection.deleteOne({ _id: objectId });
+        if (result.deletedCount === 0) {
+            return {
+                data: null,
+                error: {
+                    code: 'NOT_FOUND',
+                    message: `Article with ID '${articleId}' not found.`,
+                },
+            };
+        }
+        return { data: null, error: null };
+    } catch (error: any) {
+        console.error(`Error deleting article with ID ${articleId}:`, error);
+        return {
+            data: null,
+            error: {
+                code: 'DB_ERROR',
+                message: error.message || `An unexpected error occurred while deleting article ${articleId}.`,
+            },
         };
     }
 }
