@@ -182,6 +182,38 @@ export async function addArticleToUser(
 }
 
 /**
+ * 从用户的 likes 数组中移除文章 ID。
+ * 此函数设计为可以在事务中运行。
+ * @param {ObjectId} userId - 用户的 ObjectId。
+ * @param {ObjectId} articleId - 要移除的文章的 ObjectId。
+ * @param {object} [options={}] - 选项对象。
+ * @param {import('mongodb').ClientSession} [options.session] - 用于事务的会话对象。
+ * @returns {Promise<UpdateResult>}
+ */
+export async function removeArticleFromUserLikes(
+    userId: ObjectId,
+    articleId: ObjectId,
+    options: { session?: ClientSession } = {}
+): Promise<UpdateResult> {
+    const { session } = options;
+    const usersCollection = await getCollection<UserSchema>(COLLECTION_NAME);
+
+    const updateQuery: UpdateFilter<UserSchema> = {
+        $pull: {
+            likes: articleId,
+        },
+    };
+
+    const result = await usersCollection.updateOne(
+        { _id: userId }, // 过滤器
+        updateQuery,    // 更新操作
+        { session }     // 选项
+    );
+
+    return result;
+}
+
+/**
  * 更新用户的基本信息（用户名和邮箱）。
  * @param {string} userId - 用户的ID。
  * @param {object} updateData - 要更新的数据。

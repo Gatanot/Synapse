@@ -42,7 +42,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
                 throw new Error('用户不存在');
             }
 
-            const isLiked = user.likes.some(likeId => likeId.equals(articleId));
+            // 确保 likes 字段存在，如果不存在则初始化为空数组
+            const userLikes = user.likes || [];
+            const isLiked = userLikes.some(likeId => likeId.equals(articleId));
 
             if (isLiked) {
                 // 取消点赞 - 在事务中同时更新用户和文章

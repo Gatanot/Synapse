@@ -1,9 +1,8 @@
-
 // src/lib/server/db/articleCollection.ts
 
 import { getCollection, getClient, ObjectId } from './db';
 import { addArticleToUser } from './userCollection'; // 假设它在同一目录
-import type { ArticleSchema, ArticleStatus } from '$lib/schema';
+import type { ArticleSchema, ArticleStatus, UserSchema } from '$lib/schema';
 import type { ArticleCreateShare } from '$lib/types/share';
 import type { ArticleClient, } from '$lib/types/client';
 import type { GetArticlesOptions, SearchOptions } from '$lib/types/server';
@@ -123,6 +122,7 @@ export async function getLatestArticles(options: GetArticlesOptions = {}): Promi
             authorName: 1,
             createdAt: 1,
             status: 1,
+            likes: 1, // 添加 likes 字段到投影
         };
         if (includeBody) {
             projection.body = 1;
@@ -344,6 +344,7 @@ export async function getArticlesByUserId(
             authorName: 1,
             createdAt: 1,
             status: 1,
+            likes: 1, // 添加 likes 字段到投影
         };
         if (includeBody) {
             projection.body = 1;
@@ -364,6 +365,7 @@ export async function getArticlesByUserId(
             authorName: article.authorName,
             createdAt: article.createdAt,
             status: article.status,
+            likes: article.likes ?? 0, // 添加 likes 字段映射
             ...(includeBody && { body: article.body }),
         }));
         return { data: articlesForClient, error: null };
@@ -451,6 +453,7 @@ export async function searchArticles(
             authorName: 1,
             createdAt: 1,
             status: 1,
+            likes: 1, // 添加 likes 字段到投影
         };
         if (includeBody) {
             projection.body = 1;
@@ -474,6 +477,7 @@ export async function searchArticles(
             authorName: article.authorName,
             createdAt: article.createdAt,
             status: article.status,
+            likes: article.likes ?? 0, // 添加 likes 字段映射
             ...(includeBody && { body: article.body }), // 条件性地包含 body
         }));
 
@@ -490,11 +494,14 @@ export async function searchArticles(
     }
 }
 /**
- * 根据文章 ID 删除文章
+ * 根据文章 ID 删除文章，并从所有用户的点赞列表中移除该文章
  * @param {string} articleId - 要删除的文章的 _id (字符串形式)
  * @returns {Promise<DbResult<null>>} 删除结果
  */
 export async function deleteArticleById(articleId: string): Promise<DbResult<null>> {
+    const client = getClient();
+    const session = client.startSession();
+
     try {
         if (!ObjectId.isValid(articleId)) {
             return {
@@ -505,21 +512,48 @@ export async function deleteArticleById(articleId: string): Promise<DbResult<nul
                 },
             };
         }
-        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
-        const objectId = new ObjectId(articleId);
-        const result = await articlesCollection.deleteOne({ _id: objectId });
-        if (result.deletedCount === 0) {
+
+        let result: any = null;
+
+        await session.withTransaction(async () => {
+            const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+            const usersCollection = await getCollection<UserSchema>('users');
+            const objectId = new ObjectId(articleId);
+
+            // 1. 删除文章
+            const deleteResult = await articlesCollection.deleteOne({ _id: objectId }, { session });
+            
+            if (deleteResult.deletedCount === 0) {
+                throw new Error(`Article with ID '${articleId}' not found.`);
+            }
+
+            // 2. 从所有用户的点赞列表中移除该文章ID
+            await usersCollection.updateMany(
+                { likes: objectId },
+                { 
+                    $pull: { likes: objectId },
+                    $set: { updatedAt: new Date() }
+                },
+                { session }
+            );
+
+            result = { success: true };
+        });
+
+        return { data: null, error: null };
+    } catch (error: any) {
+        console.error(`Error deleting article with ID ${articleId}:`, error);
+        
+        if (error.message.includes('not found')) {
             return {
                 data: null,
                 error: {
                     code: 'NOT_FOUND',
-                    message: `Article with ID '${articleId}' not found.`,
+                    message: error.message,
                 },
             };
         }
-        return { data: null, error: null };
-    } catch (error: any) {
-        console.error(`Error deleting article with ID ${articleId}:`, error);
+
         return {
             data: null,
             error: {
@@ -527,6 +561,7 @@ export async function deleteArticleById(articleId: string): Promise<DbResult<nul
                 message: error.message || `An unexpected error occurred while deleting article ${articleId}.`,
             },
         };
+    } finally {
+        await session.endSession();
     }
-
 }
