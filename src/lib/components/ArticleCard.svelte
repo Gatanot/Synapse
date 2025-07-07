@@ -5,21 +5,146 @@
 <div class="article-card">
     <h2><a href="/articles/{article._id}">{article.title}</a></h2>
     <div class="article-card-meta">
-        <span class="author"
-            >作者: <a href="/users/{article.authorId}">{article.authorName}</a
-            ></span
+        <span class="author">
+            <a href="/users/{article.authorId}">{article.authorName}</a>
+        </span>
+        <span class="date"
+            >{new Date(article.createdAt).toLocaleDateString()}</span
         >
-        <span class="date">创建日期: {article.createdAt}</span>
     </div>
     <p class="article-card-summary">
         {article.summary}
     </p>
     {#if article.tags && article.tags.length > 0}
         <div class="article-card-tags">
-            标签:
             {#each article.tags as tag (tag)}
                 <span class="tag">{tag}</span>
             {/each}
         </div>
     {/if}
 </div>
+
+<style>
+    /* 
+      设计理念:
+      - `.article-card` 是内容的主要“材质卡片”，是信息的承载体。
+      - 它遵循了全局指南中的 “使用 box-shadow 创造深度” 原则。
+      - 交互反馈：当鼠标悬停时，卡片会轻微“上浮”并增强阴影，提供清晰、有意义的动效，
+        暗示这是一个可以整体交互的单元。这比改变背景色更微妙、更优雅。
+    */
+    .article-card {
+        background-color: #ffffff; /* 卡片使用纯白背景，与浅灰页面背景形成对比 */
+        border-radius: var(--border-radius-md);
+        padding: 1.5rem 2rem; /* 넉넉한 내부 여백은 고급스러움과 가독성을 높입니다. */
+        margin-bottom: 2rem; /* 카드 간의 충분한 간격을 확보하여 시각적 혼잡을 줄입니다. */
+        box-shadow:
+            0 1px 3px rgba(0, 0, 0, 0.06),
+            0 2px 6px rgba(0, 0, 0, 0.04);
+        transition:
+            transform var(--transition-speed) ease-in-out,
+            box-shadow var(--transition-speed) ease-in-out;
+    }
+
+    .article-card:hover {
+        transform: translateY(-4px); /* 悬停时轻微上浮 */
+        box-shadow:
+            0 4px 12px rgba(0, 0, 0, 0.08),
+            0 8px 24px rgba(0, 0, 0, 0.06); /* 阴影更深，增强立体感 */
+    }
+
+    /* 
+      设计理念: 标题是卡片的核心
+      - 标题链接是主要交互点，使用主文本颜色。
+      - 遵循 “克制的视觉语言” 原则，默认无下划线，仅在悬停时显示，保持界面整洁。
+    */
+    .article-card h2 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.5rem;
+    }
+
+    .article-card h2 a {
+        color: var(--text-primary);
+        text-decoration: none;
+        transition: color var(--transition-speed) ease;
+    }
+
+    .article-card h2 a:hover {
+        text-decoration: underline;
+        text-decoration-thickness: 2px; /* 让下划线更醒目一点 */
+    }
+
+    /* 
+      设计理念: 元信息 (Meta)
+      - 作者和日期是次要信息，使用 `--text-secondary` 颜色，建立视觉层级。
+      - 使用 flex 和 gap 进行对齐和间距控制，符合现代 CSS 实践。
+    */
+    .article-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem; /* 行间距0.5rem, 列间距1.5rem */
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 1.25rem;
+    }
+
+    .article-card-meta a {
+        color: inherit; /* 继承父元素的次要文本颜色 */
+        text-decoration: none;
+    }
+
+    .article-card-meta a:hover {
+        color: var(--text-primary); /* 悬停时变为主要颜色以示可交互 */
+        text-decoration: underline;
+    }
+
+    /* 日期前加一个分隔符，增强视觉分隔 */
+    .article-card-meta .date::before {
+        content: "·";
+        margin-right: 1.5rem;
+        font-weight: bold;
+    }
+
+    /* 
+      设计理念: 摘要的可读性
+      - 摘要是正文的延伸，应具有最佳的可读性。
+      - 增加 `line-height` 是提升大段文字阅读体验的最重要手段之一，体现人文关怀。
+    */
+    .article-card-summary {
+        margin: 0 0 1.5rem 0;
+        line-height: 1.7; /* 提升阅读舒适度 */
+        color: var(--text-primary);
+    }
+
+    /* 
+      设计理念: 标签作为 "芯片 (Chips)"
+      - 标签是分类元数据，使用 "芯片" 样式，使其看起来像可点击的实体。
+      - 背景使用页面的主背景色，视觉上更轻量，与卡片主体形成区分。
+    */
+    .article-card-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .tag {
+        display: inline-block;
+        background-color: var(--background);
+        color: var(--text-secondary);
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--border-radius-md); /* 与卡片圆角保持一致或更小 */
+        font-size: 0.8rem;
+        font-weight: 500;
+        /* 如果标签未来会成为链接，可以添加以下悬停效果 */
+        /* 
+        cursor: pointer;
+        transition: background-color var(--transition-speed) ease;
+        */
+    }
+
+    /*
+    .tag:hover {
+        background-color: var(--hover-bg);
+        color: var(--text-primary);
+    }
+    */
+</style>

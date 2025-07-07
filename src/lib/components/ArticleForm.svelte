@@ -1,7 +1,7 @@
 <script lang="ts">
+  // --- Script部分保持不变 ---
   import { onMount } from "svelte";
-  
-  // 定义属性接口
+
   // 定义接口
   interface Article {
     title?: string;
@@ -17,7 +17,7 @@
     submitHandler = async () => "",
     submitButtonText = "发布文章",
     formTitle = "创建文章",
-    articleId = undefined
+    articleId = undefined,
   } = $props<{
     user?: {
       _id: string;
@@ -39,7 +39,7 @@
   let tagInput = $state("");
   let errorMessage = $state("");
   let successMessage = $state("");
-  
+
   // 表单错误状态
   let errors = $state({
     title: "",
@@ -50,6 +50,7 @@
   // 处理标签输入
   function handleTagInput(event: KeyboardEvent): void {
     if (event.key === "Enter" && tagInput.trim()) {
+      event.preventDefault(); // 阻止回车提交表单
       if (tags.length >= 10) {
         errors.tags = "最多只能添加10个标签";
         return;
@@ -115,7 +116,7 @@
     try {
       const message = await submitHandler(articleData);
       successMessage = message;
-      
+
       // 如果是创建新文章，提交后清空表单
       if (submitButtonText === "发布文章") {
         title = "";
@@ -140,117 +141,111 @@
   });
 </script>
 
-<div class="container mx-auto p-4 max-w-3xl">
+<!-- HTML结构已更新，移除了原子化class，换上了语义化的class -->
+<div class="article-form-container">
   {#if !user?._id}
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+    <div class="alert alert-info">
       请登录以创建文章。
-      <a href="/login" class="underline">去登录</a>
+      <a href="/login">去登录</a>
     </div>
   {:else}
-    <h1 class="text-2xl font-bold mb-6">{formTitle}</h1>
+    <h1>{formTitle}</h1>
     
-    {#if articleId}
-      <p class="text-gray-700 mb-4">文章 ID: {articleId}</p>
-    {/if}
-
-    <!-- 错误提示 -->
+    <!-- 提示信息 -->
     {#if errorMessage}
-      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        {errorMessage}
-      </div>
+      <div class="alert alert-error">{errorMessage}</div>
     {/if}
-
-    <!-- 成功提示 -->
     {#if successMessage}
-      <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-        {successMessage}
-      </div>
+      <div class="alert alert-success">{successMessage}</div>
     {/if}
 
     <!-- 表单 -->
-    <div class="space-y-4">
+    <div class="form-body">
       <!-- 标题 -->
-      <div>
-        <label for="title" class="block text-sm font-medium text-gray-700">标题</label>
+      <div class="form-group">
+        <label for="title">标题</label>
         <input
           type="text"
           id="title"
           bind:value={title}
-          class="mt-1 block w-full border {errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+          class="form-input"
+          class:is-error={errors.title}
           placeholder="请输入文章标题"
           maxlength="200"
         />
         {#if errors.title}
-          <p class="text-red-500 text-sm mt-1">{errors.title}</p>
+          <p class="error-message">{errors.title}</p>
         {/if}
       </div>
 
       <!-- 简介 -->
-      <div>
-        <label for="summary" class="block text-sm font-medium text-gray-700">简介</label>
+      <div class="form-group">
+        <label for="summary">简介</label>
         <textarea
           id="summary"
           bind:value={summary}
-          class="mt-1 block w-full border {errors.summary ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+          class="form-input"
+          class:is-error={errors.summary}
           placeholder="请输入文章简介"
           rows="3"
           maxlength="500"
         ></textarea>
         {#if errors.summary}
-          <p class="text-red-500 text-sm mt-1">{errors.summary}</p>
+          <p class="error-message">{errors.summary}</p>
         {/if}
       </div>
 
       <!-- 标签 -->
-      <div>
-        <label for="tags" class="block text-sm font-medium text-gray-700">标签</label>
+      <div class="form-group">
+        <label for="tags">标签 (输入后按回车添加)</label>
         <input
           type="text"
           id="tags"
           bind:value={tagInput}
           onkeydown={handleTagInput}
-          class="mt-1 block w-full border {errors.tags ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="输入标签后按回车添加"
+          class="form-input"
+          class:is-error={errors.tags}
         />
-        <div class="mt-2 flex flex-wrap gap-2">
+        <div class="tag-list">
           {#each tags as tag}
-            <span class="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+            <span class="tag">
               {tag}
               <button
                 type="button"
+                class="remove-tag"
                 onclick={() => removeTag(tag)}
-                class="ml-1 text-indigo-600 hover:text-indigo-800"
+                aria-label="移除标签 {tag}"
               >
-                &times;
+                ×
               </button>
             </span>
           {/each}
         </div>
         {#if errors.tags}
-          <p class="text-red-500 text-sm mt-1">{errors.tags}</p>
+          <p class="error-message">{errors.tags}</p>
         {/if}
       </div>
 
       <!-- 正文 -->
-      <div>
-        <label for="body" class="block text-sm font-medium text-gray-700">正文 (Markdown)</label>
+      <div class="form-group">
+        <label for="body">正文 (支持Markdown)</label>
         <textarea
           id="body"
           bind:value={body}
-          class="mt-1 block w-full border {errors.body ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="请输入文章正文 (支持Markdown)"
-          rows="10"
+          class="form-input"
+          class:is-error={errors.body}
+          rows="15"
         ></textarea>
         {#if errors.body}
-          <p class="text-red-500 text-sm mt-1">{errors.body}</p>
+          <p class="error-message">{errors.body}</p>
         {/if}
       </div>
 
       <!-- 发布按钮 -->
-      <div>
+      <div class="form-actions">
         <button
           onclick={handleSubmit}
-          class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
+          class="submit-btn"
           disabled={!user?._id}
         >
           {submitButtonText}
@@ -259,3 +254,215 @@
     </div>
   {/if}
 </div>
+
+<style>
+    /* 
+      设计理念: 延续已有设计体系
+      - 使用CSS变量，保持颜色、圆角、过渡等基础元素统一。
+      - 遵循 “内容优先” 和 “克制的视觉语言” 原则。
+      - 表单是功能性区域，样式应清晰、无干扰，并提供明确的反馈。
+    */
+    :root {
+        /* 定义特定于表单的颜色变量，便于管理 */
+        --error-color: #d32f2f;
+        --error-bg: #ffebee;
+        --success-color: #388e3c;
+        --success-bg: #e8f5e9;
+        --info-color: #0288d1;
+        --info-bg: #e1f5fe;
+    }
+
+    .article-form-container {
+        /* 与 main-content 保持一致的布局 */
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .article-form-container h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+    }
+
+    .form-body {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem; /* 表单组之间有足够的间距 */
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem; /* 标签和输入框之间的间距 */
+    }
+
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    /* 
+      设计理念: 输入框样式统一
+      - 与导航栏的搜索框共享视觉语言：圆角、边框、内边距和焦点效果。
+      - 这是系统一致性的关键体现。
+    */
+    .form-input {
+        width: 100%;
+        box-sizing: border-box; /* 确保padding和border包含在width内 */
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-md);
+        background-color: #ffffff; /* 表单输入框使用纯白背景 */
+        font-size: 1rem;
+        font-family: inherit;
+        color: var(--text-primary);
+        outline: none;
+        transition: 
+            border-color var(--transition-speed) ease,
+            box-shadow var(--transition-speed) ease;
+    }
+
+    .form-input::placeholder {
+        color: var(--text-secondary);
+        font-style: italic;
+    }
+
+    /* 
+      设计理念: 清晰的焦点反馈 (与搜索框一致)
+      - 使用 `box-shadow` 创造辉光效果，而不是丑陋的默认 `outline`。
+    */
+    .form-input:focus {
+        border-color: var(--highlight-color);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--highlight-color) 20%, transparent);
+    }
+    
+    textarea.form-input {
+        line-height: 1.7; /* 提升长文本输入体验，体现人文关怀 */
+        resize: vertical; /* 允许用户垂直调整大小 */
+    }
+
+    /* 
+      设计理念: 标签样式统一
+      - 复用 `ArticleCard` 中的标签(chip)样式，确保视觉一致性。
+      - 移除按钮提供了清晰的交互。
+    */
+    .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .tag {
+        display: inline-flex; /* 使用 inline-flex 使内部按钮对齐 */
+        align-items: center;
+        gap: 0.5rem;
+        background-color: var(--background);
+        color: var(--text-secondary);
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--border-radius-md);
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .remove-tag {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1rem;
+        height: 1rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+        line-height: 1;
+        border-radius: 50%;
+        transition: 
+            background-color var(--transition-speed) ease,
+            color var(--transition-speed) ease;
+    }
+    .remove-tag:hover {
+        background-color: var(--hover-bg);
+        color: var(--text-primary);
+    }
+
+    /* 
+      设计理念: 明确的错误状态
+      - 错误状态是重要的用户反馈，应清晰但不刺眼。
+      - 使用变量 `--error-color` 来统一样式。
+    */
+    .form-input.is-error {
+        border-color: var(--error-color);
+    }
+    .form-input.is-error:focus {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--error-color) 25%, transparent);
+    }
+
+    .error-message {
+        color: var(--error-color);
+        font-size: 0.875rem;
+    }
+
+    /*
+      设计理念: 主操作按钮
+      - 与导航栏的 "注册" 按钮样式完全一致，代表这是一个主要的、积极的操作。
+    */
+    .submit-btn {
+        display: inline-block;
+        padding: 0.75rem 2rem;
+        border: none;
+        border-radius: var(--border-radius-md);
+        background-color: var(--text-primary);
+        color: white;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color var(--transition-speed) ease;
+    }
+
+    .submit-btn:hover {
+        background-color: #424242; /* 深色按钮的悬停效果，与注册按钮一致 */
+    }
+
+    .submit-btn:disabled {
+        background-color: var(--hover-bg);
+        color: var(--text-secondary);
+        cursor: not-allowed;
+    }
+
+    /* 
+      设计理念: 提示信息框 (Alerts)
+      - 提供清晰、一致的反馈。
+      - 使用柔和的背景色和更深的主题色文本，易于辨识但不过于分散注意力。
+    */
+    .alert {
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        border-radius: var(--border-radius-md);
+        border: 1px solid transparent;
+    }
+    .alert.alert-error {
+        background-color: var(--error-bg);
+        color: var(--error-color);
+        border-color: color-mix(in srgb, var(--error-color) 40%, transparent);
+    }
+    .alert.alert-success {
+        background-color: var(--success-bg);
+        color: var(--success-color);
+        border-color: color-mix(in srgb, var(--success-color) 40%, transparent);
+    }
+    .alert.alert-info {
+        background-color: var(--info-bg);
+        color: var(--info-color);
+        border-color: color-mix(in srgb, var(--info-color) 40%, transparent);
+    }
+    .alert a {
+        color: inherit;
+        font-weight: 500;
+        text-decoration: underline;
+    }
+</style>
