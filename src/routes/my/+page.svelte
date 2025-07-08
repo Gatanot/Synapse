@@ -31,7 +31,7 @@ function toResetPassword()
 <div>
     <button 
     type="button"
-    on:click={toArticlesLists}
+    onclick={toArticlesLists}
     class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
     >
     我的文章
@@ -41,7 +41,7 @@ function toResetPassword()
 <div>
     <button
     type="button"
-    on:click={toEditmyprofile}
+    onclick={toEditmyprofile}
     class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
     >
     编辑我的资料
@@ -51,7 +51,7 @@ function toResetPassword()
 <div>
 <button
     type="button"
-    on:click={toResetPassword}
+    onclick={toResetPassword}
     class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
     >
     重设密码

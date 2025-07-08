@@ -4,6 +4,7 @@ import { connectToDatabase } from './db';
 import { ensureArticleIndexes } from './articleCollection';
 import { ensureUserIndexes } from './userCollection';
 import { ensureSessionIndexes } from './sessionCollection';
+import { ensureCommentIndexes } from './commentCollection';
 
 /**
  * 统一确保所有集合的索引都已创建。
@@ -15,6 +16,7 @@ export async function ensureAllIndexes() {
         await ensureUserIndexes();
         await ensureSessionIndexes();
         await ensureArticleIndexes();
+        await ensureCommentIndexes();
         console.log("All indexes ensured successfully.");
     } catch (error: any) {
         if (error.codeName === 'IndexOptionsConflict' || error.code === 85) {

@@ -22,5 +22,5 @@ export interface ArticleSchema {
   updatedAt: Date;
   comments: ObjectId[]; // 假设引用一个 'comments' 集合
   status: ArticleStatus;
-  likes:number;
+  likes: number;
 }
