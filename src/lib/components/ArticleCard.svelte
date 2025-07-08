@@ -46,6 +46,11 @@
         transition:
             transform var(--transition-speed) ease-in-out,
             box-shadow var(--transition-speed) ease-in-out;
+        /* 宽度限制：确保卡片宽度一致，与外部网格布局配合 */
+        width: 100%;
+        max-width: 300px; /* 最大宽度限制，略大于网格最小宽度 */
+        min-width: 300px; /* 最小宽度限制，与网格最小宽度保持一致 */
+        box-sizing: border-box; /* 确保padding包含在宽度内 */
     }
 
     .article-card:hover {
@@ -63,6 +68,16 @@
     .article-card h2 {
         margin: 0 0 0.5rem 0;
         font-size: 1.5rem;
+        /* 标题多行截断：最多显示2行，超出部分用省略号替代 */
+        line-height: 1.4; /* 标题行高，略小于摘要行高 */
+        min-height: calc(2 * 1.4em);
+        max-height: calc(2 * 1.4em); /* 最多2行的高度 */
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* 最多显示2行 */
+        line-clamp: 2; /* 标准属性，兼容性增强 */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .article-card h2 a {
@@ -119,6 +134,7 @@
         min-height: calc(2 * 1.7em);
         display: -webkit-box;
         -webkit-line-clamp: 2; /* 核心：最多显示2行 */
+        line-clamp: 2; /* 标准属性，兼容性增强 */
         -webkit-box-orient: vertical;
         overflow: hidden;
         text-overflow: ellipsis;
