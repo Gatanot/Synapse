@@ -111,7 +111,12 @@
 
             const data = await response.json();
             if (response.ok && data.success) {
-                await goto('/');
+                // 注册成功并自动登录，刷新页面以获取登录态
+                window.location.href = '/';
+            } else if (data.sessionCreated === false) {
+                // 注册成功但自动登录失败，提示用户手动登录
+                errorMessage = data.message || '注册成功，但自动登录失败，请手动登录。';
+                setTimeout(() => goto('/login'), 2000);
             } else {
                 errorMessage = data.message || '注册失败，请检查您的输入或稍后再试。';
                 if (data.field) {
