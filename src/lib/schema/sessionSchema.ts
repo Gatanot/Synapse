@@ -21,6 +21,7 @@ export interface SessionSchema {
         email: string;
         articles: ObjectId[]; // 与 UserSchema 保持一致
         likes: ObjectId[]; // 新增 likes 字段，与 UserSchema 保持一致
+        signature?: string; // 个人签名
     };
 
     /**

@@ -10,4 +10,5 @@ export interface UserClient {
     email: string;
     articles: string[]; // Explicitly define as an array of ObjectId
     likes: string[]; // Explicitly define as an array of ObjectId
+    signature: string; // 个人签名
 }

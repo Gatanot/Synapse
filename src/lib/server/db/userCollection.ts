@@ -42,6 +42,7 @@ export async function createUser(userData: UserRegisterShare): Promise<DbResult<
 
         const dataToInsert: Omit<UserSchema, '_id'> = {
             name: userData.name,
+            signature: userData.signature || '', // 个人签名，默认为空字符串
             email: normalizedEmail,
             password: hashedPassword, // <--- 存储哈希后的密码
             articles: [],
@@ -222,8 +223,8 @@ export async function removeArticleFromUserLikes(
  * @returns {Promise<DbResult<UpdateResult>>}
  */
 export async function updateUserProfile(
-    userId: string, 
-    updateData: { name?: string; email?: string }
+    userId: string,
+    updateData: { name?: string; email?: string; signature?: string }
 ): Promise<DbResult<UpdateResult>> {
     if (!userId || !ObjectId.isValid(userId)) {
         const message = `Invalid ObjectId format for user ID: ${userId}`;
@@ -231,7 +232,7 @@ export async function updateUserProfile(
         return { data: null, error: { code: 'INVALID_ID', message } };
     }
 
-    if (!updateData.name && !updateData.email) {
+    if (!updateData.name && !updateData.email && !updateData.signature) {
         const message = 'No update data provided.';
         console.warn(message);
         return { data: null, error: { code: 'INVALID_INPUT', message } };
@@ -241,6 +242,7 @@ export async function updateUserProfile(
         const collection = await getCollection<UserSchema>(COLLECTION_NAME);
         
         // 构建更新对象
+
         const updateFields: Partial<UserSchema> = {
             updatedAt: new Date()
         };
@@ -251,7 +253,6 @@ export async function updateUserProfile(
 
         if (updateData.email) {
             const normalizedEmail = updateData.email.trim().toLowerCase();
-            
             // 验证邮箱格式
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(normalizedEmail)) {
@@ -259,20 +260,22 @@ export async function updateUserProfile(
                 console.warn(message);
                 return { data: null, error: { code: 'VALIDATION_ERROR', message } };
             }
-
             // 检查邮箱是否已被其他用户使用
-            const existingUser = await collection.findOne({ 
+            const existingUser = await collection.findOne({
                 email: normalizedEmail,
-                _id: { $ne: new ObjectId(userId) } // 排除当前用户
+                _id: { $ne: new ObjectId(userId) }
             });
-            
             if (existingUser) {
                 const message = `Email '${normalizedEmail}' is already in use by another user.`;
                 console.warn(message);
                 return { data: null, error: { code: 'EMAIL_EXISTS', message } };
             }
-
             updateFields.email = normalizedEmail;
+        }
+
+        if (updateData.signature) {
+            // 允许 signature 为空字符串
+            updateFields.signature = (updateData.signature ?? '').toString();
         }
 
         const result = await collection.updateOne(

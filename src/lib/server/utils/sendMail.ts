@@ -2,8 +2,8 @@ import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.qq.com', // SMTP服务器地址
-    port: 465,           // 端口号，465为SSL
-    secure: true,        // 使用SSL
+    port: 587,           // 端口号，465为SSL
+    secure: false,        // 使用SSL
     auth: {
         user: '2971411759@qq.com',      // 邮箱账号
         pass: 'mqjgbwjyrdmqdhdb'    // 邮箱授权码
