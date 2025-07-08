@@ -604,7 +604,7 @@
 		transform: translateY(-50%);
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.75rem; /* 所有按钮的间距由这里统一控制！ */
 		z-index: 100;
 		background-color: var(--surface-bg);
 		border-radius: var(--border-radius-md);
@@ -657,11 +657,7 @@
 	}
 
 	/* === 点赞按钮特殊样式 === */
-	.like-button {
-		position: relative;
-		gap: 0.5rem;
-	}
-
+	/* 保持原有的 .liked 和 .disabled 状态样式，它们控制颜色和交互 */
 	.like-button.liked {
 		background-color: #ff6b6b;
 		color: white;
@@ -688,13 +684,54 @@
 		transform: none;
 		box-shadow: none;
 	}
+	
+	/* 
+    --- 核心修改区域 ---
+    */
+	
+	/* 1. 对点赞按钮进行特定布局调整 */
+	.floating-toolbar .like-button {
+		/* 1.1. 将按钮在flex容器中排序到最后 */
+		order: 99;
 
+		/* 1.2. 改变内部flex布局方向为垂直，实现图标在上、数字在下 */
+		flex-direction: column;
+		
+		/* 1.3. 调整内边距和间距以适应垂直布局 */
+		padding: 0.5rem;
+		gap: 0.1rem;
+
+		/* 1.4. 设置相对定位，为伪元素定位提供基准 */
+		position: relative;
+		
+		/* 1.5. 移除任何可能影响间距的margin (重要！) */
+		margin-top: 0; 
+	}
+
+	/* 2. 创建视觉分割线，但不影响布局间距 */
+	.floating-toolbar .like-button::before {
+		content: "";
+		position: absolute;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background-color: var(--border-color);
+		
+		/* 关键：将线定位在父容器gap产生的空白区域的中央 */
+		/* -calc(0.75rem / 2) = -0.375rem */
+		top: -0.375rem; 
+	}
+
+	/* 3. 调整点赞数文本样式 */
 	.like-count {
-		font-size: 0.75rem;
+		font-size: 0.8rem;
 		font-weight: 600;
+		line-height: 1;
 		min-width: 1rem;
 		text-align: center;
 	}
+	/* --- 核心修改区域结束 --- */
+
 
 	/* === 登录提示 === */
 	.login-prompt {
@@ -734,8 +771,6 @@
 		background-color: #000;
 	}
 
-	/* 更多 prose 样式可按需添加... */
-
 	.empty-content {
 		text-align: center;
 		font-style: italic;
@@ -762,7 +797,7 @@
 		.floating-toolbar {
 			right: 1rem;
 			padding: 0.75rem;
-			gap: 0.5rem;
+			gap: 0.5rem; /* 移动端间距变小 */
 		}
 
 		.toolbar-button {
@@ -775,6 +810,12 @@
 		.toolbar-button svg {
 			width: 18px;
 			height: 18px;
+		}
+
+		/* 响应式调整伪元素分割线的位置，以匹配新的gap值 */
+		.floating-toolbar .like-button::before {
+			/* -calc(0.5rem / 2) = -0.25rem */
+			top: -0.25rem;
 		}
 	}
 </style>
