@@ -5,6 +5,8 @@
 	import type { ArticleClient } from "$lib/types/client";
 	import type { UserClient } from "$lib/types/client";
 	import { marked } from "marked";
+	import CommentForm from "$lib/components/CommentForm.svelte";
+	import CommentList from "$lib/components/CommentList.svelte";
 
 	// 接收用户数据
 	export let data: { user: UserClient | null };
@@ -25,6 +27,11 @@
 	let isLiked = false;
 	let likeCount = 0;
 	let likeButtonDisabled = false;
+
+	// 评论相关状态
+	let showCommentForm = false;
+	let commentList: CommentList | null = null;
+	let commentForm: CommentForm | null = null;
 
 	// 从页面参数中获取文章 ID
 	$: articleId = $page.params._id;
@@ -180,6 +187,75 @@
 			return content;
 		}
 	}
+
+	// 处理评论表单提交
+	async function handleCommentSubmit(
+		event: CustomEvent<{ content: string }>,
+	) {
+		if (!user || !articleId) {
+			if (commentForm) {
+				commentForm.setError("用户未登录或文章ID无效");
+			}
+			return;
+		}
+
+		const { content } = event.detail;
+
+		try {
+			const response = await fetch("/api/comments", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					content,
+					articleId,
+				}),
+			});
+
+			const result = await response.json();
+
+			if (result.success) {
+				// 成功：清空表单并隐藏
+				if (commentForm) {
+					commentForm.clearForm();
+				}
+				showCommentForm = false;
+
+				// 刷新评论列表
+				if (commentList) {
+					commentList.refreshComments();
+				}
+
+				console.log("评论发布成功:", result.comment_id);
+			} else {
+				// 失败：显示错误信息
+				if (commentForm) {
+					commentForm.setError(result.message || "评论发布失败");
+				}
+			}
+		} catch (err) {
+			console.error("评论提交失败:", err);
+			if (commentForm) {
+				commentForm.setError("评论提交时发生网络错误，请重试");
+			}
+		}
+	}
+
+	// 处理评论表单取消
+	function handleCommentCancel() {
+		showCommentForm = false;
+	}
+
+	// 显示评论表单
+	function showCommentFormHandler() {
+		if (!user) {
+			// 未登录，跳转到登录页面
+			goto("/login");
+			return;
+		}
+		showCommentForm = true;
+	}
 </script>
 
 <main>
@@ -193,7 +269,7 @@
 			<div class="status-card error-card">
 				<h2>出错了</h2>
 				<p>{error}</p>
-				<button on:click={handleBack} class="action-button">
+				<button onclick={handleBack} class="action-button">
 					返回首页
 				</button>
 			</div>
@@ -236,13 +312,47 @@
 					<p class="empty-content">文章内容暂不可用</p>
 				{/if}
 			</article>
+
+			<!-- 评论区域 -->
+			<div class="comments-section">
+				<!-- 先显示评论列表，但不自动加载 -->
+				<CommentList
+					bind:this={commentList}
+					{articleId}
+					initialLoad={false}
+				/>
+
+				<!-- 评论表单放在评论列表下方 -->
+				{#if !showCommentForm}
+					<div class="comment-actions">
+						<button
+							class="comment-btn"
+							onclick={showCommentFormHandler}
+						>
+							{#if user}
+								写评论
+							{:else}
+								登录后评论
+							{/if}
+						</button>
+					</div>
+				{/if}
+
+				{#if showCommentForm}
+					<CommentForm
+						bind:this={commentForm}
+						on:submit={handleCommentSubmit}
+						on:cancel={handleCommentCancel}
+					/>
+				{/if}
+			</div>
 		{/if}
 
 		<!-- 悬浮工具栏 -->
 		{#if !loading && !error && article}
 			<div class="floating-toolbar">
 				<button
-					on:click={handleBack}
+					onclick={handleBack}
 					class="toolbar-button"
 					title="返回首页"
 					aria-label="返回首页"
@@ -260,7 +370,7 @@
 				</button>
 
 				<button
-					on:click={scrollToTop}
+					onclick={scrollToTop}
 					class="toolbar-button"
 					title="返回顶部"
 					aria-label="返回顶部"
@@ -279,7 +389,7 @@
 
 				<!-- 点赞按钮 -->
 				<button
-					on:click={toggleLike}
+					onclick={toggleLike}
 					class="toolbar-button like-button"
 					class:liked={isLiked}
 					class:disabled={!user}
@@ -312,7 +422,7 @@
 
 				{#if article.body}
 					<button
-						on:click={toggleMarkdownMode}
+						onclick={toggleMarkdownMode}
 						class="toolbar-button"
 						title={isMarkdownMode ? "显示源码" : "渲染 Markdown"}
 						aria-label={isMarkdownMode
@@ -329,7 +439,7 @@
 
 {#if !user && !loading && !error && article}
 	<div class="login-prompt">
-		<p>登录后可以点赞文章</p>
+		<p>登录后可以点赞文章和发表评论</p>
 		<a href="/login" class="login-link">去登录</a>
 	</div>
 {/if}
@@ -734,16 +844,41 @@
 		background-color: #000;
 	}
 
-	/* 更多 prose 样式可按需添加... */
+	/* === 评论区域样式 === */
+	.comments-section {
+		margin-top: 3rem;
+	}
 
-	.empty-content {
-		text-align: center;
-		font-style: italic;
-		color: var(--text-secondary);
-		padding: 3rem 1rem;
-		background-color: var(--background);
+	.comment-actions {
+		display: flex;
+		justify-content: center;
+		margin-bottom: 2rem;
+	}
+
+	.comment-btn {
+		background-color: var(--text-primary);
+		color: var(--surface-bg);
+		border: none;
+		padding: 0.75rem 2rem;
 		border-radius: var(--border-radius-md);
-		border: 1px dashed var(--border-color);
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.comment-btn:hover {
+		background-color: #000;
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	}
+
+	.comment-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.3);
 	}
 
 	/* === 响应式设计 === */
@@ -775,6 +910,15 @@
 		.toolbar-button svg {
 			width: 18px;
 			height: 18px;
+		}
+
+		.comments-section {
+			margin-top: 2rem;
+		}
+
+		.comment-btn {
+			padding: 0.5rem 1.5rem;
+			font-size: 0.875rem;
 		}
 	}
 </style>
