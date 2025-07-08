@@ -25,6 +25,10 @@ function toResetPassword()
 </div>
 
 <div>
+    个人签名： {data.user?.signature || '未设置个人签名'}
+</div>
+
+<div>
     <button 
     type="button"
     onclick={toArticlesLists}
