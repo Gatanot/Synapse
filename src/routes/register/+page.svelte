@@ -133,202 +133,383 @@
     }
 </script>
 
-<main>
-    <h1>注册界面</h1>
+<svelte:head>
+    <title>注册 - Synapse</title>
+    <meta name="description" content="加入 Synapse，开始您的知识分享之旅" />
+</svelte:head>
 
-    {#if errorMessage}
-        <p class="error" role="alert">
-            {errorMessage}
-            <!-- {#if errorField}
-                <small>(相关字段: {errorField})</small>
-            {/if} -->
-        </p>
-    {/if}
+<main class="main-content">
+    <section class="page-header">
+        <h1>加入 Synapse</h1>
+        <p class="page-subtitle">开始您的文本交流之旅</p>
+    </section>
 
-    <!-- on:submit|preventDefault 调用 handleSubmit 函数并阻止表单的默认提交行为 -->
-    <form on:submit|preventDefault={handleSubmit}>
-        <div>
-            <label for="email">邮箱:</label>
-            <input
-                type="email"
-                id="email"
-                name="email"
-                bind:value={email}
-                required
-                aria-describedby={(errorField === 'email' && errorMessage) ? 'email-error' : null}
-                class:invalid={errorField === 'email' && errorMessage}
-            />
-            <button type="button" on:click={handleSendCode} disabled={codeCountdown > 0} style="margin-left:8px;">
-                {codeCountdown > 0 ? `重新发送(${codeCountdown})` : '发送验证码'}
+    <div class="register-card">
+        {#if errorMessage}
+            <div class="error-message" role="alert">
+                {errorMessage}
+            </div>
+        {/if}
+
+        <form on:submit|preventDefault={handleSubmit} class="register-form">
+            <div class="form-group">
+                <label for="email">邮箱地址</label>
+                <div class="input-with-button">
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        bind:value={email}
+                        required
+                        placeholder="请输入您的邮箱地址"
+                        class="form-input"
+                        class:invalid={errorField === 'email' && errorMessage}
+                        aria-describedby={(errorField === 'email' && errorMessage) ? 'email-error' : null}
+                    />
+                    <button 
+                        type="button" 
+                        on:click={handleSendCode} 
+                        disabled={codeCountdown > 0 || isLoading}
+                        class="secondary-btn"
+                    >
+                        {codeCountdown > 0 ? `重新发送(${codeCountdown})` : '发送验证码'}
+                    </button>
+                </div>
+                {#if errorField === 'email' && errorMessage}
+                    <small id="email-error" class="field-error">{errorMessage}</small>
+                {/if}
+            </div>
+
+            <div class="form-group">
+                <label for="code">验证码</label>
+                <input
+                    type="text"
+                    id="code"
+                    name="code"
+                    bind:value={code}
+                    required
+                    placeholder="请输入收到的验证码"
+                    class="form-input"
+                    class:invalid={errorField === 'code' && errorMessage}
+                    aria-describedby={(errorField === 'code' && errorMessage) ? 'code-error' : null}
+                />
+                {#if errorField === 'code' && errorMessage}
+                    <small id="code-error" class="field-error">{errorMessage}</small>
+                {/if}
+            </div>
+
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    bind:value={username}
+                    required
+                    placeholder="请输入用户名（至少2个字符）"
+                    class="form-input"
+                    class:invalid={errorField === 'name' && errorMessage}
+                    aria-describedby={(errorField === 'name' && errorMessage) ? 'username-error' : null}
+                />
+                {#if errorField === 'name' && errorMessage}
+                    <small id="username-error" class="field-error">{errorMessage}</small>
+                {/if}
+            </div>
+
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    bind:value={password}
+                    required
+                    minlength="6"
+                    placeholder="请输入密码（至少6位字符）"
+                    class="form-input"
+                    class:invalid={errorField === 'password' && errorMessage}
+                    aria-describedby={(errorField === 'password' && errorMessage) ? 'password-error' : null}
+                />
+                {#if errorField === 'password' && errorMessage}
+                    <small id="password-error" class="field-error">{errorMessage}</small>
+                {/if}
+            </div>
+
+            <button type="submit" disabled={isLoading} class="primary-btn">
+                {#if isLoading}正在注册...{:else}注册{/if}
             </button>
-            {#if errorField === 'email' && errorMessage}
-                <small id="email-error" class="field-error">{errorMessage}</small>
-            {/if}
-        </div>
-        <div>
-            <label for="code">验证码:</label>
-            <input
-                type="text"
-                id="code"
-                name="code"
-                bind:value={code}
-                required
-                aria-describedby={(errorField === 'code' && errorMessage) ? 'code-error' : null}
-                class:invalid={errorField === 'code' && errorMessage}
-            />
-            {#if errorField === 'code' && errorMessage}
-                <small id="code-error" class="field-error">{errorMessage}</small>
-            {/if}
-        </div>
-        <div>
-            <label for="username">用户名:</label>
-            <input
-                type="text"
-                id="username"
-                name="username"
-                bind:value={username}
-                required
-                aria-describedby={(errorField === 'name' && errorMessage) ? 'username-error' : null}
-                class:invalid={errorField === 'name' && errorMessage}
-            />
-             {#if errorField === 'name' && errorMessage}
-                <small id="username-error" class="field-error">{errorMessage}</small>
-            {/if}
-        </div>
-        <div>
-            <label for="password">密码:</label>
-            <input
-                type="password"
-                id="password"
-                name="password"
-                bind:value={password}
-                required
-                minlength="6"
-                aria-describedby={(errorField === 'password' && errorMessage) ? 'password-error' : null}
-                class:invalid={errorField === 'password' && errorMessage}
-            />
-            {#if errorField === 'password' && errorMessage}
-                <small id="password-error" class="field-error">{errorMessage}</small>
-            {/if}
-        </div>
-        <button type="submit" disabled={isLoading}>
-            {#if isLoading}正在注册...{:else}注册{/if}
-        </button>
-    </form>
+        </form>
 
-    <p>
-        已有账户? <a href="/login">前往登录</a>
-    </p>
+        <div class="login-link">
+            <span>已有账户？</span>
+            <a href="/login">前往登录</a>
+        </div>
+    </div>
 </main>
 
 <style>
-    main {
-        max-width: 400px;
-        margin: 50px auto;
-        padding: 20px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        font-family: sans-serif;
-    }
-
-    h1 {
+    /* 
+      设计理念: 页面头部
+      - 与主站保持一致的头部设计风格
+      - 添加副标题增强用户体验
+    */
+    .page-header {
+        margin-bottom: 2.5rem;
         text-align: center;
-        color: #333;
-        margin-bottom: 20px;
     }
 
-    div {
-        margin-bottom: 15px;
+    .page-header h1 {
+        font-size: 2.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 0.5rem 0;
     }
 
-    label {
+    .page-subtitle {
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        margin: 0;
+        font-style: italic;
+    }
+
+    /* 
+      设计理念: 注册卡片
+      - 使用与主站相同的卡片设计风格
+      - 清晰的信息层次和视觉结构
+    */
+    .register-card {
+        max-width: 480px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-md);
+        padding: 2.5rem;
+        box-shadow: 
+            0 2px 4px rgba(0, 0, 0, 0.05),
+            0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* 
+      设计理念: 表单样式
+      - 清晰的表单布局和间距
+    */
+    .register-form {
+        margin-bottom: 2rem;
+    }
+
+    /* 
+      设计理念: 表单组件
+      - 与主站表单风格保持一致
+      - 清晰的标签和输入框设计
+    */
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
         display: block;
-        margin-bottom: 5px;
-        color: #555;
-        font-weight: bold;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--text-primary);
     }
 
-    input[type="email"],
-    input[type="text"],
-    input[type="password"] {
+    .form-input {
         width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        box-sizing: border-box; /* 确保 padding 不会增加元素的总宽度 */
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-md);
+        font-size: 1rem;
+        color: var(--text-primary);
+        background-color: #ffffff;
+        transition: 
+            border-color var(--transition-speed) ease,
+            box-shadow var(--transition-speed) ease;
+        box-sizing: border-box;
     }
 
-    input:focus {
+    .form-input:focus {
         outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        border-color: var(--text-primary);
+        box-shadow: 0 0 0 2px rgba(33, 33, 33, 0.1);
     }
 
-    input.invalid { /* 当字段无效时的样式 */
-        border-color: red;
-        background-color: #fff0f0;
-    }
-    input.invalid:focus {
-        border-color: red;
-        box-shadow: 0 0 0 0.2rem rgba(255, 0, 0, 0.25);
+    .form-input::placeholder {
+        color: var(--text-secondary);
+        font-style: italic;
     }
 
+    .form-input.invalid {
+        border-color: #c62828;
+        background-color: #ffebee;
+    }
 
-    button[type="submit"] {
+    .form-input.invalid:focus {
+        border-color: #c62828;
+        box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.1);
+    }
+
+    /* 
+      设计理念: 输入框与按钮组合
+      - 邮箱输入框和发送验证码按钮的组合布局
+    */
+    .input-with-button {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+    }
+
+    .input-with-button .form-input {
+        flex: 1;
+    }
+
+    /* 
+      设计理念: 按钮样式
+      - 与主站按钮风格保持完全一致
+      - 主要按钮和次要按钮的区分
+    */
+    .primary-btn {
         width: 100%;
-        padding: 10px 15px;
-        background-color: #007bff;
-        color: white;
+        padding: 0.75rem 1.5rem;
         border: none;
-        border-radius: 4px;
+        border-radius: var(--border-radius-md);
+        background-color: var(--text-primary);
+        color: white;
+        font-size: 1rem;
+        font-weight: 500;
         cursor: pointer;
-        font-size: 16px;
-        transition: background-color 0.2s;
+        transition: background-color var(--transition-speed) ease;
+        margin-top: 1rem;
     }
 
-    button[type="submit"]:hover:not(:disabled) {
-        background-color: #0056b3;
+    .primary-btn:hover:not(:disabled) {
+        background-color: #424242;
     }
 
-    button:disabled { /* 按钮禁用时的样式 */
-        background-color: #ccc;
+    .primary-btn:disabled {
+        background-color: #cccccc;
         cursor: not-allowed;
     }
 
-    .error {
-        color: red;
+    .secondary-btn {
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-md);
+        background-color: #ffffff;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 
+            background-color var(--transition-speed) ease,
+            border-color var(--transition-speed) ease;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .secondary-btn:hover:not(:disabled) {
+        background-color: var(--hover-bg);
+        border-color: var(--text-primary);
+    }
+
+    .secondary-btn:disabled {
+        background-color: #f5f5f5;
+        border-color: #e0e0e0;
+        color: var(--text-secondary);
+        cursor: not-allowed;
+    }
+
+    /* 
+      设计理念: 错误消息
+      - 清晰的错误提示样式
+    */
+    .error-message {
         background-color: #ffebee;
-        border: 1px solid red;
-        padding: 10px;
-        margin-bottom: 20px; /* 增加与表单的间距 */
-        border-radius: 4px;
+        border: 1px solid #ffcdd2;
+        border-radius: var(--border-radius-md);
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        color: #c62828;
         text-align: center;
+        font-size: 0.9rem;
+        line-height: 1.4;
     }
-    /* .error small {
+
+    .field-error {
         display: block;
-        font-size: 0.9em;
-        color: #c00;
-        margin-top: 5px;
-    } */
-
-    .field-error { /* 单个字段下方的错误提示 */
-        display: block; /* 确保它占据一行 */
-        color: red;
-        font-size: 0.85em;
-        margin-top: 4px;
+        color: #c62828;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+        line-height: 1.3;
     }
 
-    p {
+    /* 
+      设计理念: 登录链接
+      - 提供清晰的导航选项
+    */
+    .login-link {
         text-align: center;
-        margin-top: 20px;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+        font-size: 0.9rem;
     }
 
-    a {
-        color: #007bff;
+    .login-link span {
+        color: var(--text-secondary);
+        margin-right: 0.5rem;
+    }
+
+    .login-link a {
+        color: var(--text-primary);
         text-decoration: none;
+        font-weight: 500;
+        transition: color var(--transition-speed) ease;
     }
 
-    a:hover {
+    .login-link a:hover {
+        color: #424242;
         text-decoration: underline;
+    }
+
+    /* 
+      设计理念: 响应式设计
+      - 在小屏幕上优化布局和间距
+    */
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 2rem;
+        }
+
+        .register-card {
+            margin: 0 1rem;
+            padding: 2rem 1.5rem;
+        }
+
+        .input-with-button {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .secondary-btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .register-card {
+            padding: 1.5rem 1rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.75rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
     }
 </style>

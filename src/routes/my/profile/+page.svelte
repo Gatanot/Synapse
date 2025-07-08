@@ -349,6 +349,10 @@
         font-size: 1rem;
         color: var(--text-primary);
         background-color: var(--surface-bg);
+        font-family: inherit;
+        line-height: 1.5;
+        resize: none; /* 禁用拖动调整大小 */
+        box-sizing: border-box; /* 确保padding不会影响总宽度 */
         transition: 
             border-color var(--transition-speed) ease,
             box-shadow var(--transition-speed) ease;

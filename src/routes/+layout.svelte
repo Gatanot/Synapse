@@ -13,6 +13,31 @@
             searchQuery = "";
         }
     }
+
+    async function handleLogout() {
+        const confirmed = confirm("确定要登出吗？");
+        if (confirmed) {
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    // 登出成功，刷新页面或跳转到首页
+                    window.location.href = '/';
+                } else {
+                    console.error('登出失败');
+                    alert('登出失败，请稍后再试');
+                }
+            } catch (error) {
+                console.error('登出请求失败:', error);
+                alert('登出失败，请稍后再试');
+            }
+        }
+    }
 </script>
 
 <!-- 
@@ -69,7 +94,11 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/logout" aria-label="登出">
+                    <button 
+                        onclick={handleLogout}
+                        aria-label="登出"
+                        class="logout-btn"
+                    >
                         <!-- SVG Logout Icon -->
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -81,7 +110,7 @@
                             ></path>
                         </svg>
                         <span class="nav-link-text">登出</span>
-                    </a>
+                    </button>
                 </li>
             {:else}
                 <li><a href="/login">登录</a></li>
@@ -259,6 +288,33 @@
         background-color: #424242; /* 深色按钮的悬停效果 */
     }
 
+    /* 
+      设计理念: 登出按钮样式
+      - 使其与导航链接保持视觉一致性
+      - 但作为按钮而非链接处理
+    */
+    .logout-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1rem;
+        color: var(--text-secondary);
+        background: none;
+        border: none;
+        font-weight: 500;
+        font-size: inherit;
+        font-family: inherit;
+        border-radius: var(--border-radius-md);
+        cursor: pointer;
+        transition:
+            background-color var(--transition-speed) ease,
+            color var(--transition-speed) ease;
+    }
+    .logout-btn:hover {
+        background-color: var(--hover-bg);
+        color: var(--text-primary);
+    }
+
     .nav-links svg {
         width: 1.25rem;
         height: 1.25rem;
@@ -290,7 +346,8 @@
         .nav-link-text {
             display: none;
         }
-        .nav-links a {
+        .nav-links a,
+        .logout-btn {
             padding: 0.75rem; /* 调整为方形 */
         }
     }
