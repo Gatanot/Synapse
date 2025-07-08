@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
-    import ArticleCard from '$lib/components/ArticleCard.svelte';
+    import SearchResult from '$lib/components/SearchResult.svelte';
 
     // 从服务端加载的数据
     let { data } = $props();
@@ -17,6 +17,7 @@
     let hasSearched = $derived(data.hasSearched || false);
     let errorMessage = $derived(data.error || '');
     let paginationInfo = $derived(data.pagination || { currentPage: 1, totalPages: 0, totalResults: 0, limit: 10 });
+    let fuzzySearchInfo = $derived(data.fuzzySearchInfo || null);
 
     // 搜索类型选项
     const searchTypeOptions = [
@@ -305,6 +306,24 @@
                 {#if searchResults.length > 0}
                     <div class="results-header">
                         <h2>搜索结果</h2>
+                        
+                        <!-- 模糊搜索提示 -->
+                        {#if fuzzySearchInfo && fuzzySearchInfo.isFuzzySearch}
+                            <div class="fuzzy-search-notice">
+                                <div class="fuzzy-search-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
+                                    </svg>
+                                </div>
+                                <div class="fuzzy-search-text">
+                                    <p>
+                                        未找到 "<span class="original-term">{fuzzySearchInfo.originalTerm}</span>" 的精确匹配，
+                                        你要找的是不是如下内容：
+                                    </p>
+                                </div>
+                            </div>
+                        {/if}
+                        
                         <p class="results-count">
                             找到 {searchResults.length} 篇相关文章
                             {#if data.searchTerm}
@@ -316,9 +335,9 @@
                         </p>
                     </div>
                     
-                    <div class="articles-grid">
+                    <div class="search-results-list">
                         {#each searchResults as article (article._id)}
-                            <ArticleCard {article} />
+                            <SearchResult {article} />
                         {/each}
                     </div>
 
@@ -394,6 +413,7 @@
                             <li>尝试使用更简短的关键词</li>
                             <li>尝试搜索文章标题、标签或作者名</li>
                             <li>使用不同的相关词汇</li>
+                            <li>系统会自动进行模糊搜索以找到相关内容</li>
                         </ul>
                     </div>
                 {/if}
@@ -413,7 +433,7 @@
                     <li><strong>内容</strong> - 仅搜索文章正文内容</li>
                 </ul>
                 <div class="search-tips-note">
-                    <p><strong>提示：</strong>选择具体的搜索范围可以获得更精确的搜索结果。</p>
+                    <p><strong>提示：</strong>选择具体的搜索范围可以获得更精确的搜索结果。如果精确匹配结果较少，系统会自动启用模糊搜索来找到更多相关内容。</p>
                 </div>
             </div>
         {/if}
@@ -679,12 +699,12 @@
         font-size: 0.9rem;
         cursor: pointer;
         transition: all 0.2s ease;
-        background: #0066cc;
+        background: #5c5f60;
         color: white;
     }
 
     .search-btn:hover:not(:disabled) {
-        background: #0052a3;
+        background: #000000;
         transform: translateY(-1px);
     }
 
@@ -727,10 +747,64 @@
         color: #0066cc;
     }
 
-    .articles-grid {
-        display: grid;
-        gap: 1.5rem;
+    /* 模糊搜索提示样式 */
+    .fuzzy-search-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem 0;
+        background: transparent;
+        margin-bottom: 1.5rem;
+    }
+
+    .fuzzy-search-icon {
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+        color: #6c757d;
+    }
+
+    .fuzzy-search-icon svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    .fuzzy-search-text {
+        flex: 1;
+    }
+
+    .fuzzy-search-text p {
+        margin: 0 0 0.75rem 0;
+        color: #495057;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    .original-term {
+        font-weight: bold;
+        color: #333;
+        background: rgba(108, 117, 125, 0.1);
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+    }
+
+    .search-results-list {
         margin-bottom: 2rem;
+        /* 移除白色背景框，直接使用系统底色 */
+    }
+
+    /* 响应式设计 - 搜索结果列表 */
+    @media (max-width: 640px) {
+        .search-results-list {
+            margin-bottom: 1.5rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .search-results-list {
+            margin-bottom: 1rem;
+        }
     }
 
     /* 分页样式 */
@@ -993,6 +1067,24 @@
 
         .pagination-info {
             font-size: 0.85rem;
+        }
+
+        /* 模糊搜索提示响应式 */
+        .fuzzy-search-notice {
+            flex-direction: column;
+            gap: 0.75rem;
+            padding: 0.75rem;
+        }
+
+        .fuzzy-search-icon {
+            width: 20px;
+            height: 20px;
+            align-self: center;
+        }
+
+        .fuzzy-search-text p {
+            font-size: 0.9rem;
+            text-align: center;
         }
     }
 </style>

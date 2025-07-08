@@ -383,6 +383,7 @@ export async function getArticlesByUserId(
 
 /**
  * 根据搜索关键词搜索文章，支持按标题、标签、作者名、内容搜索
+ * 如果精确匹配结果少于3个，会自动进行模糊搜索
  * @param {string} searchTerm - 搜索关键词
  * @param {SearchOptions} options - 查询选项
  * @returns {Promise<DbResult<ArticleClient[]>>} 搜索结果
@@ -402,9 +403,10 @@ export async function searchArticles(
     try {
         const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
 
-        // 构建搜索查询
+        // 构建基础查询
         const baseQuery: any = status !== 'all' ? { status } : {};
         
+        // 第一步：精确搜索
         let searchConditions: any[] = [];
         
         // 根据搜索类型构建不同的搜索条件
@@ -440,7 +442,7 @@ export async function searchArticles(
                 break;
         }
 
-        const searchQuery: any = {
+        const exactSearchQuery: any = {
             ...baseQuery,
             $or: searchConditions
         };
@@ -453,19 +455,113 @@ export async function searchArticles(
             authorName: 1,
             createdAt: 1,
             status: 1,
-            likes: 1, // 添加 likes 字段到投影
+            likes: 1,
         };
         if (includeBody) {
             projection.body = 1;
         }
 
-        const articlesFromDb = await articlesCollection
-            .find(searchQuery)
+        // 执行精确搜索
+        let articlesFromDb = await articlesCollection
+            .find(exactSearchQuery)
             .project(projection)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
             .toArray();
+
+        let isFuzzySearch = false;
+        let fuzzySearchTermsUsed: string[] = [];
+
+        // 如果精确搜索结果少于3个且搜索词长度大于1，进行模糊搜索
+        if (articlesFromDb.length < 3 && searchTerm.length > 1) {
+            console.log(`精确搜索只找到 ${articlesFromDb.length} 个结果，开始模糊搜索...`);
+            
+            // 模糊搜索：分词搜索 + 部分匹配
+            const fuzzySearchConditions: any[] = [];
+            
+            // 1. 分词搜索（按空格、标点符号分割）
+            const words = searchTerm.split(/[\s\-_,，。！？；：、]/g)
+                .filter(word => word.trim().length > 0);
+            
+            // 2. 部分匹配（如果搜索词长度大于2，尝试每个字符的部分匹配）
+            const partialTerms: string[] = [];
+            if (searchTerm.length > 2) {
+                // 生成2-字符和3-字符的子串
+                for (let i = 0; i <= searchTerm.length - 2; i++) {
+                    partialTerms.push(searchTerm.substring(i, i + 2));
+                    if (i <= searchTerm.length - 3) {
+                        partialTerms.push(searchTerm.substring(i, i + 3));
+                    }
+                }
+            }
+            
+            const allSearchTerms = [...words, ...partialTerms].filter(term => term.length > 1);
+            fuzzySearchTermsUsed = [...words]; // 记录用于提示的主要分词
+            
+            // 构建模糊搜索条件
+            for (const term of allSearchTerms) {
+                switch (searchType) {
+                    case 'title':
+                        fuzzySearchConditions.push(
+                            { title: { $regex: term, $options: 'i' } }
+                        );
+                        break;
+                    case 'tags':
+                        fuzzySearchConditions.push(
+                            { tags: { $in: [new RegExp(term, 'i')] } }
+                        );
+                        break;
+                    case 'author':
+                        fuzzySearchConditions.push(
+                            { authorName: { $regex: term, $options: 'i' } }
+                        );
+                        break;
+                    case 'content':
+                        fuzzySearchConditions.push(
+                            { body: { $regex: term, $options: 'i' } }
+                        );
+                        break;
+                    case 'all':
+                    default:
+                        fuzzySearchConditions.push(
+                            { title: { $regex: term, $options: 'i' } },
+                            { tags: { $in: [new RegExp(term, 'i')] } },
+                            { authorName: { $regex: term, $options: 'i' } },
+                            { body: { $regex: term, $options: 'i' } }
+                        );
+                        break;
+                }
+            }
+
+            if (fuzzySearchConditions.length > 0) {
+                const fuzzySearchQuery: any = {
+                    ...baseQuery,
+                    $or: fuzzySearchConditions
+                };
+
+                // 执行模糊搜索，但排除已经找到的文章
+                const exactIds = articlesFromDb.map(article => article._id);
+                if (exactIds.length > 0) {
+                    fuzzySearchQuery._id = { $nin: exactIds };
+                }
+
+                const fuzzyArticles = await articlesCollection
+                    .find(fuzzySearchQuery)
+                    .project(projection)
+                    .sort({ createdAt: -1 })
+                    .limit(limit - articlesFromDb.length) // 剩余数量
+                    .toArray();
+
+                // 合并精确搜索和模糊搜索的结果
+                articlesFromDb = [...articlesFromDb, ...fuzzyArticles];
+                
+                if (fuzzyArticles.length > 0) {
+                    isFuzzySearch = true;
+                    console.log(`模糊搜索额外找到 ${fuzzyArticles.length} 个结果`);
+                }
+            }
+        }
 
         // 将数据库文档映射为客户端安全的对象
         const articlesForClient: ArticleClient[] = articlesFromDb.map((article): ArticleClient => ({
@@ -477,14 +573,26 @@ export async function searchArticles(
             authorName: article.authorName,
             createdAt: article.createdAt,
             status: article.status,
-            likes: article.likes ?? 0, // 添加 likes 字段映射
-            ...(includeBody && { body: article.body }), // 条件性地包含 body
+            likes: article.likes ?? 0,
+            ...(includeBody && { body: article.body }),
         }));
 
-        return {
+        // 在返回的数据中添加模糊搜索信息
+        const result: any = {
             data: articlesForClient,
             error: null
         };
+
+        // 如果使用了模糊搜索，添加相关信息
+        if (isFuzzySearch && articlesForClient.length > 0) {
+            result.fuzzySearchInfo = {
+                originalTerm: searchTerm,
+                fuzzyTerms: fuzzySearchTermsUsed,
+                isFuzzySearch: true
+            };
+        }
+
+        return result;
     } catch (error: any) {
         console.error(`Error searching articles with term "${searchTerm}":`, error);
         return {

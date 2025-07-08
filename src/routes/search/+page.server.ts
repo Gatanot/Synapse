@@ -30,7 +30,7 @@ export const load: ServerLoad = async ({ url }) => {
     }
 
     try {
-        const { data: articles, error } = await searchArticles(
+        const searchResult = await searchArticles(
             searchTerm.trim(),
             {
                 limit: limit + 1, // 获取多一条来判断是否还有更多结果
@@ -41,8 +41,8 @@ export const load: ServerLoad = async ({ url }) => {
             }
         );
 
-        if (error) {
-            console.error('Search error in page load:', error);
+        if (searchResult.error) {
+            console.error('Search error in page load:', searchResult.error);
             return {
                 articles: [],
                 searchTerm: searchTerm.trim(),
@@ -58,7 +58,7 @@ export const load: ServerLoad = async ({ url }) => {
             };
         }
 
-        const allArticles = articles || [];
+        const allArticles = searchResult.data || [];
         const hasMoreResults = allArticles.length > limit;
         const displayArticles = hasMoreResults ? allArticles.slice(0, limit) : allArticles;
         
@@ -66,11 +66,15 @@ export const load: ServerLoad = async ({ url }) => {
         const totalResults = skip + allArticles.length + (hasMoreResults ? 1 : 0); // 估算总数
         const totalPages = Math.max(1, Math.ceil(totalResults / limit)); // 确保至少有1页
 
+        // 提取模糊搜索信息
+        const fuzzySearchInfo = (searchResult as any).fuzzySearchInfo;
+
         return {
             articles: displayArticles,
             searchTerm: searchTerm.trim(),
             searchType,
             hasSearched: true,
+            fuzzySearchInfo, // 传递模糊搜索信息
             pagination: {
                 currentPage: page,
                 totalPages: Math.max(totalPages, page + (hasMoreResults ? 1 : 0)),
