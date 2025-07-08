@@ -10,12 +10,14 @@
     // 显示的用户数据（可变）
     let displayUser = $state({
         name: data.user.name,
-        email: data.user.email
+        email: data.user.email,
+        signature: data.user.signature || ''
     });
 
     // 表单数据
     let formData = $state({
-        name: data.user.name
+        name: data.user.name,
+        signature: data.user.signature || ''
     });
 
     // 表单提交状态
@@ -43,7 +45,9 @@
     $effect(() => {
         displayUser.name = data.user.name;
         displayUser.email = data.user.email;
+        displayUser.signature = data.user.signature || '';
         formData.name = data.user.name;
+        formData.signature = data.user.signature || '';
     });
 
     // 开始编辑
@@ -51,7 +55,8 @@
         isEditing = true;
         // 重置表单数据为当前显示的数据
         formData = {
-            name: displayUser.name
+            name: displayUser.name,
+            signature: displayUser.signature || ''
         };
     }
 
@@ -60,23 +65,37 @@
         isEditing = false;
         // 重置表单数据
         formData = {
-            name: displayUser.name
+            name: displayUser.name,
+            signature: displayUser.signature || ''
         };
+       
     }
 
     // 表单提交处理
     function handleSubmit() {
         isSubmitting = true;
-        return async ({ result, update }: { result: any; update: () => Promise<void> }) => {
+        return async ({ result, update, formElement }: { result: any; update: () => Promise<void>; formElement: HTMLFormElement }) => {
+            // 手动同步 formData 到表单，确保 signature 也被提交
+            const formDataObj = new FormData(formElement);
+            formDataObj.set('name', formData.name);
+            formDataObj.set('signature', formData.signature);
+
+            // 重新发起表单提交，确保 signature 传递到后端
+            await fetch(formElement.action, {
+                method: formElement.method,
+                body: formDataObj,
+            });
+
             await update();
             isSubmitting = false;
-            
+
             console.log('Form submission result:', result);
-            
+
             // 如果提交成功，更新显示数据
             if (result.type === 'success' && result.data?.success) {
                 console.log('Success detected, updating UI');
                 displayUser.name = formData.name;
+                displayUser.signature = formData.signature;
                 isEditing = false;
             }
         };
@@ -94,14 +113,26 @@
             {#if !isEditing}
                 <!-- 查看模式 -->
                 <div class="profile-view">
+
                     <div class="profile-field">
                         <div class="field-label">用户名</div>
                         <div class="field-value">{displayUser.name}</div>
                     </div>
-                    
+
                     <div class="profile-field">
                         <div class="field-label">邮箱地址</div>
                         <div class="field-value">{displayUser.email}</div>
+                    </div>
+
+                    <div class="profile-field">
+                        <div class="field-label">个人签名</div>
+                        <div class="field-value">
+                            {#if displayUser.signature}
+                                {displayUser.signature}
+                            {:else}
+                                <span class="signature-placeholder">（你还没有设置签名）</span>
+                            {/if}
+                        </div>
                     </div>
 
                     <div class="profile-actions">
@@ -121,6 +152,7 @@
                     use:enhance={handleSubmit}
                     class="profile-form"
                 >
+
                     <div class="form-field">
                         <label for="name" class="field-label">用户名</label>
                         <input
@@ -135,6 +167,22 @@
                             disabled={isSubmitting}
                         />
                     </div>
+
+                    <div class="form-field">
+                        <label for="signature" class="field-label">个人签名</label>
+                        <textarea
+                            id="signature"
+                            name="signature"
+                            bind:value={formData.signature}
+                            maxlength="100"
+                            rows="3"
+                            class="form-input"
+                            placeholder="填写你的个性签名（最多100字）"
+                            disabled={isSubmitting}
+                        ></textarea>
+                    </div>
+
+
 
                     <div class="form-field">
                         <div class="field-label">邮箱地址</div>
@@ -275,6 +323,10 @@
         font-style: italic;
         margin-top: 0.25rem;
     }
+    .signature-placeholder {
+        color: var(--text-secondary);
+        font-style: italic;
+    }
 
     /* === 编辑模式样式 === */
     .profile-form {
@@ -398,6 +450,8 @@
     .message svg {
         flex-shrink: 0;
     }
+    
+    
 
     /* === 响应式设计 === */
     @media (max-width: 768px) {

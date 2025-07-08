@@ -13,4 +13,5 @@ export interface UserSchema {
   createdAt: Date;
   updatedAt: Date;
   likes: ObjectId[]; // Explicitly define as an array of ObjectId
+  signature: string; // 个人签名
 }
