@@ -7,7 +7,7 @@ import { getLatestArticles } from '$lib/server/db/articleCollection';
 export const load: PageServerLoad = async () => {
     try {
         const { data: articles, error } = await getLatestArticles({
-            limit: 10,
+            limit: 12,
             status: 'published',
             includeBody: false
         });
