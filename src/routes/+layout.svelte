@@ -14,29 +14,35 @@
         }
     }
 
+    let showLogoutDialog = $state(false);
+
     async function handleLogout() {
-        const confirmed = confirm("确定要登出吗？");
-        if (confirmed) {
-            try {
-                const response = await fetch('/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    // 登出成功，刷新页面或跳转到首页
-                    window.location.href = '/';
-                } else {
-                    console.error('登出失败');
-                    alert('登出失败，请稍后再试');
+        showLogoutDialog = true;
+    }
+
+    async function confirmLogout() {
+        showLogoutDialog = false;
+        try {
+            const response = await fetch('/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
                 }
-            } catch (error) {
-                console.error('登出请求失败:', error);
+            });
+            if (response.ok) {
+                window.location.href = '/';
+            } else {
+                console.error('登出失败');
                 alert('登出失败，请稍后再试');
             }
+        } catch (error) {
+            console.error('登出请求失败:', error);
+            alert('登出失败，请稍后再试');
         }
+    }
+
+    function cancelLogout() {
+        showLogoutDialog = false;
     }
 </script>
 
@@ -47,6 +53,89 @@
   - 它在滚动时会覆盖在内容之上，提供了清晰的视觉层级。
 -->
 <header class="main-header">
+    {#if showLogoutDialog}
+        <div class="modal-mask">
+            <div class="modal-dialog">
+                <div class="modal-title">确认登出</div>
+                <div class="modal-content">确定要登出当前账号吗？</div>
+                <div class="modal-actions">
+                    <button class="btn-primary" onclick={confirmLogout}>确定</button>
+                    <button class="btn-secondary" onclick={cancelLogout}>取消</button>
+                </div>
+            </div>
+        </div>
+    {/if}
+<style>
+    .modal-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.25);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-dialog {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+        padding: 2rem 2.5rem 1.5rem 2.5rem;
+        min-width: 280px;
+        max-width: 90vw;
+        text-align: center;
+        animation: modalIn 0.18s cubic-bezier(.4,1.6,.6,1) both;
+    }
+    @keyframes modalIn {
+        from { transform: scale(0.95) translateY(30px); opacity: 0; }
+        to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+    .modal-content {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+    .modal-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+    .btn-primary {
+        background-color: var(--text-primary);
+        color: var(--surface-bg);
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: var(--border-radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color var(--transition-speed) ease;
+    }
+    .btn-primary:hover {
+        background-color: #000;
+    }
+    .btn-secondary {
+        background-color: var(--background);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        padding: 0.6rem 1.5rem;
+        border-radius: var(--border-radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease, border-color var(--transition-speed) ease;
+    }
+    .btn-secondary:hover {
+        background-color: var(--hover-bg);
+        color: var(--text-primary);
+        border-color: var(--text-primary);
+    }
+</style>
     <nav class="navbar">
         <div class="logo">
             <a href="/">Synapse</a>
