@@ -1,11 +1,16 @@
-<script>
+<script lang="ts">
 	import { goto } from "$app/navigation";
 	import ArticleCard from "$lib/components/ArticleCard.svelte";
 
 	let { data } = $props();
 
-	let articles = $derived(data.articles);
+	let allArticles = $derived(data.articles);
 	let user = $derived(data.user);
+	
+	// 分页展示逻辑
+	let displayCount = $state(6); // 初始显示6篇文章
+	let articlesToShow = $derived(allArticles.slice(0, displayCount));
+	let hasMore = $derived(displayCount < allArticles.length);
 
 	function handleCreateArticle() {
 		if (user) {
@@ -13,6 +18,10 @@
 		} else {
 			goto("/login");
 		}
+	}
+	
+	function loadMore() {
+		displayCount = Math.min(displayCount + 6, allArticles.length);
 	}
 </script>
 
@@ -29,12 +38,20 @@
 		</button>
 	</section>
 
-	{#if articles && articles.length > 0}
+	{#if allArticles && allArticles.length > 0}
 		<div class="articles-grid">
-			{#each articles as article}
+			{#each articlesToShow as article}
 				<ArticleCard {article} />
 			{/each}
 		</div>
+		
+		{#if hasMore}
+			<div class="load-more-section">
+				<button class="load-more-btn" onclick={loadMore}>
+					查看更多文章
+				</button>
+			</div>
+		{/if}
 	{:else}
 		<div class="empty-state">
 			<p>这里空空如也，不如动手创作第一篇文章？</p>
@@ -124,14 +141,64 @@
 	}
 
 	/* 
+      设计理念: 加载更多按钮区域 - 低调的底部样式
+      - 移除卡片样式的包装，减少视觉突出度
+      - 采用更subtle的设计，不干扰主要内容
+      - 保持功能性的同时降低视觉重量
+    */
+	.load-more-section {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
+		margin: 4rem 0 2rem 0;
+		padding: 0;
+	}
+
+	.load-more-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1.5rem;
+		background-color: transparent;
+		color: var(--text-secondary); /* #757575 */
+		border: 1px solid var(--border-color); /* #e0e0e0 */
+		border-radius: var(--border-radius-md);
+		font-size: 0.95rem;
+		font-weight: 400;
+		cursor: pointer;
+		/* 简单的过渡效果 */
+		transition:
+			color var(--transition-speed) ease,
+			border-color var(--transition-speed) ease,
+			background-color var(--transition-speed) ease;
+	}
+
+	.load-more-btn:hover {
+		color: var(--text-primary); /* #212121 */
+		border-color: var(--text-secondary); /* #757575 */
+		background-color: var(--background); /* #f5f5f5 */
+	}
+
+	/* 
       设计理念: 响应式微调
       - 虽然网格本身是响应式的，但我们可以在小屏幕上调整页面头部的布局，
         使其从水平排列变为垂直堆叠，以获得更好的阅读流。
+      - 同时优化加载更多按钮在移动设备上的显示
     */
 	@media (max-width: 520px) {
 		.page-header {
 			flex-direction: column;
 			align-items: flex-start; /* 左对齐 */
+		}
+
+		.load-more-section {
+			margin: 3rem 0 1.5rem 0;
+		}
+
+		.load-more-btn {
+			padding: 0.65rem 1.25rem;
+			font-size: 0.9rem;
 		}
 	}
 </style>

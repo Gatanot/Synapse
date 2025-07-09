@@ -234,11 +234,10 @@ function toDrafts() {
     }
 
     .action-card:hover {
-        background-color: var(--hover-bg);
-        border-color: var(--text-primary);
-        box-shadow: 
-            0 4px 8px rgba(0, 0, 0, 0.1),
-            0 8px 24px rgba(0, 0, 0, 0.1);
+        transform: translateY(-4px); /* 与ArticleCard相同的上浮距离 */
+        box-shadow:
+            0 4px 12px rgba(0, 0, 0, 0.08),
+            0 8px 24px rgba(0, 0, 0, 0.06); /* 与ArticleCard相同的悬停阴影 */
     }
 
     .action-icon {

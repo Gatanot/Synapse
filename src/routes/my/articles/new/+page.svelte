@@ -1,5 +1,6 @@
 <!-- 新建文章页面 -->
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import ArticleForm from "$lib/components/ArticleForm.svelte";
   
   let { data } = $props();
@@ -12,7 +13,12 @@
       body: JSON.stringify(articleData)
     });
     const result = await response.json();
-    if (response.ok) return `文章发布成功！ID: ${result.article_id}`;
+    if (response.ok) {
+      // 发布成功后跳转到新发布的文章页面
+      const articleId = result.article_id;
+      goto(`/articles/${articleId}`);
+      return `文章发布成功！正在跳转到文章页面...`;
+    }
     throw new Error(result.message || "发布失败");
   }
 
@@ -27,7 +33,12 @@
       })
     });
     const result = await response.json();
-    if (response.ok) return `草稿保存成功！ID: ${result.article_id}`;
+    if (response.ok) {
+      // 保存草稿成功后跳转到草稿页面
+      const draftId = result.article_id;
+      goto(`/my/drafts`);
+      return `草稿保存成功！正在跳转到草稿页面...`;
+    }
     throw new Error(result.message || "保存草稿失败");
   }
 </script>

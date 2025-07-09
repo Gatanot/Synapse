@@ -38,11 +38,9 @@
     
     const result = await response.json();
     if (response.ok) {
-      // 发布成功后跳转到文章页面
-      setTimeout(() => {
-        goto(`/articles/${data.draft._id}`);
-      }, 1000);
-      return "文章发布成功！正在跳转...";
+      // 发布成功后直接跳转到文章页面
+      goto(`/articles/${data.draft._id}`);
+      return "文章发布成功！正在跳转到文章页面...";
     }
     throw new Error(result.message || "发布失败");
   }
