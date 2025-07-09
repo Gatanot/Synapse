@@ -298,3 +298,116 @@ export async function updateUserProfile(
     }
 }
 
+/**
+ * 获取所有用户（分页），用于管理员查看用户列表
+ * @param {object} options - 查询选项
+ * @param {number} [options.page=1] - 页码
+ * @param {number} [options.limit=20] - 每页数量
+ * @param {string} [options.search] - 搜索关键词（用户名或邮箱）
+ * @param {string} [options.sortBy='createdAt'] - 排序字段
+ * @param {string} [options.sortOrder='desc'] - 排序方向
+ * @returns {Promise<DbResult<{ users: UserSchema[], total: number }>>}
+ */
+export async function getAllUsers(options: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+} = {}): Promise<DbResult<{ users: UserSchema[], total: number }>> {
+    const {
+        page = 1,
+        limit = 20,
+        search,
+        sortBy = 'createdAt',
+        sortOrder = 'desc'
+    } = options;
+
+    try {
+        const collection = await getCollection<UserSchema>(COLLECTION_NAME);
+        
+        // 构建查询条件
+        const query: any = {};
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query.$or = [
+                { name: searchRegex },
+                { email: searchRegex }
+            ];
+        }
+
+        // 构建排序条件
+        const sort: any = {};
+        sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+        // 计算跳过的文档数
+        const skip = (page - 1) * limit;
+
+        // 并行执行查询和计数
+        const [users, total] = await Promise.all([
+            collection.find(query)
+                .sort(sort)
+                .skip(skip)
+                .limit(limit)
+                .toArray(),
+            collection.countDocuments(query)
+        ]);
+
+        return {
+            data: { users, total },
+            error: null
+        };
+    } catch (error: any) {
+        const message = 'An unexpected error occurred while fetching users.';
+        console.error(`Error getting all users: ${error.message}`, error);
+        return {
+            data: null,
+            error: { code: 'DB_ERROR', message }
+        };
+    }
+}
+
+/**
+ * 获取最近更新的用户列表
+ * @param {object} options - 查询选项
+ * @param {number} [options.limit=50] - 返回数量限制
+ * @param {number} [options.hours=24] - 多少小时内的更新
+ * @returns {Promise<DbResult<UserSchema[]>>}
+ */
+export async function getRecentlyUpdatedUsers(options: {
+    limit?: number;
+    hours?: number;
+} = {}): Promise<DbResult<UserSchema[]>> {
+    const { limit = 50, hours = 24 } = options;
+
+    try {
+        const collection = await getCollection<UserSchema>(COLLECTION_NAME);
+        
+        // 计算时间范围
+        const timeThreshold = new Date();
+        timeThreshold.setHours(timeThreshold.getHours() - hours);
+
+        const users = await collection.find({
+            $or: [
+                { createdAt: { $gte: timeThreshold } },
+                { updatedAt: { $gte: timeThreshold } }
+            ]
+        })
+        .sort({ updatedAt: -1 })
+        .limit(limit)
+        .toArray();
+
+        return {
+            data: users,
+            error: null
+        };
+    } catch (error: any) {
+        const message = 'An unexpected error occurred while fetching recently updated users.';
+        console.error(`Error getting recently updated users: ${error.message}`, error);
+        return {
+            data: null,
+            error: { code: 'DB_ERROR', message }
+        };
+    }
+}
+
