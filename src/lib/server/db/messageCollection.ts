@@ -43,3 +43,14 @@ export async function markAllMessagesAsRead(userId: ObjectId) {
   const collection = await getCollection<MessageSchema>('messages');
   await collection.updateMany({ userId, isRead: false }, { $set: { isRead: true } });
 }
+
+
+
+/**
+ * 删除指定用户所有已读消息
+ */
+export async function deleteAllReadMessages(userId: ObjectId) {
+  const collection = await getCollection<MessageSchema>('messages');
+  await collection.deleteMany({ userId, isRead: true });
+}
+

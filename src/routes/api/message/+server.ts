@@ -1,5 +1,5 @@
 import { json, error } from '@sveltejs/kit';
-import { getMessagesByUserId, insertMessage, markMessageAsRead, markAllMessagesAsRead } from '$lib/server/db/messageCollection';
+import { getMessagesByUserId, insertMessage, markMessageAsRead, markAllMessagesAsRead, deleteAllReadMessages } from '$lib/server/db/messageCollection';
 import type { RequestHandler } from './$types';
 import type { MessageCreateForm } from '$lib/types/share/messageShare';
 import { ObjectId } from '$lib/server/db/db';
@@ -61,4 +61,14 @@ export const PUT: RequestHandler = async ({ locals }) => {
   const userId = getUserIdFromLocals(locals);
   await markAllMessagesAsRead(userId);
   return json({ code: 0, msg: 'ok' });
+};
+
+// 删除所有已读消息
+export const DELETE: RequestHandler = async ({ locals }) => {
+  if (!locals.user) {
+    throw error(401, '未登录');
+  }
+  const userId = new ObjectId(locals.user._id);
+  await deleteAllReadMessages(userId);
+  return json({ code: 0, msg: '已读消息已全部删除' });
 };
