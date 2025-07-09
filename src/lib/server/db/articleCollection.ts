@@ -312,15 +312,14 @@ export async function updateArticleById(
 /**
  * 根据用户 ID 获取文章列表。
  * @param {string} userId - 用户的 ID。
- * @param {object} options - 查询选项。
- * @param {boolean} [options.includeBody=false] - 是否包含文章正文。
+ * @param {GetArticlesOptions} options - 查询选项。
  * @returns {Promise<DbResult<ArticleClient[]>>}
  */
 export async function getArticlesByUserId(
     userId: string,
-    options: { includeBody?: boolean } = {}
+    options: GetArticlesOptions = {}
 ): Promise<DbResult<ArticleClient[]>> {
-    const { includeBody = false } = options;
+    const { includeBody = false, status = 'all', limit, skip } = options;
 
     try {
         if (!ObjectId.isValid(userId)) {
@@ -336,6 +335,12 @@ export async function getArticlesByUserId(
         const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
         const userObjectId = new ObjectId(userId);
 
+        // 构建查询条件
+        const filter: any = { authorId: userObjectId };
+        if (status !== 'all') {
+            filter.status = status;
+        }
+
         const projection: Record<string, 1> = {
             title: 1,
             summary: 1,
@@ -350,11 +355,19 @@ export async function getArticlesByUserId(
             projection.body = 1;
         }
 
-        const articlesFromDb = await articlesCollection
-            .find({ authorId: userObjectId })
+        let query = articlesCollection
+            .find(filter)
             .project(projection)
-            .sort({ createdAt: -1 })
-            .toArray();
+            .sort({ createdAt: -1 });
+        
+        if (skip) {
+            query = query.skip(skip);
+        }
+        if (limit) {
+            query = query.limit(limit);
+        }
+
+        const articlesFromDb = await query.toArray();
 
         const articlesForClient: ArticleClient[] = articlesFromDb.map((article) => ({
             _id: article._id.toString(),

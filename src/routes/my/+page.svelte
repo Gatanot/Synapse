@@ -14,6 +14,10 @@ function toEditmyprofile() {
 function toResetPassword() {
     goto("/password/reset");
 }
+
+function toDrafts() {
+    goto("/my/drafts");
+}
 </script>
 
 <svelte:head>
@@ -58,6 +62,22 @@ function toResetPassword() {
                 <div class="action-content">
                     <h3>我的文章</h3>
                     <p>查看和管理您发布的文章</p>
+                </div>
+            </button>
+
+            <button 
+                type="button"
+                onclick={toDrafts}
+                class="action-card"
+            >
+                <div class="action-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                    </svg>
+                </div>
+                <div class="action-content">
+                    <h3>我的草稿</h3>
+                    <p>查看和管理您的草稿文章</p>
                 </div>
             </button>
 

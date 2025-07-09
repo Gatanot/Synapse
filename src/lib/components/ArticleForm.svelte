@@ -18,6 +18,8 @@
     submitButtonText = "发布文章",
     formTitle = "创建文章",
     articleId = undefined,
+    draftHandler = undefined,
+    showDraftButton = false,
   } = $props<{
     user?: {
       _id: string;
@@ -29,6 +31,8 @@
     submitButtonText?: string;
     formTitle?: string;
     articleId?: string;
+    draftHandler?: (articleData: any) => Promise<string>;
+    showDraftButton?: boolean;
   }>();
 
   // 表单状态（使用 $state）
@@ -67,7 +71,7 @@
 
   // 删除标签
   function removeTag(tagToRemove: string): void {
-    tags = tags.filter((tag) => tag !== tagToRemove);
+    tags = tags.filter((tag: string) => tag !== tagToRemove);
     errors.tags = "";
   }
 
@@ -127,6 +131,38 @@
       }
     } catch (err: any) {
       errorMessage = err.message || "操作失败，请稍后重试。";
+    }
+  }
+
+  // 保存草稿
+  async function handleSaveDraft(): Promise<void> {
+    if (!draftHandler) return;
+
+    // 重置错误和成功消息
+    errors = { title: "", summary: "", tags: "", body: "" };
+    errorMessage = "";
+    successMessage = "";
+
+    // 草稿的验证更宽松，只要有内容就可以保存
+    if (!title.trim() && !summary.trim() && !body.trim()) {
+      errorMessage = "请至少填写标题、简介或正文中的一项";
+      return;
+    }
+
+    // 构造草稿数据
+    const draftData = {
+      title: title.trim() || "无标题草稿",
+      summary: summary.trim() || "暂无简介",
+      tags: tags.length > 0 ? tags : ["草稿"],
+      body: body.trim() || "",
+      status: "draft",
+    };
+
+    try {
+      const message = await draftHandler(draftData);
+      successMessage = message;
+    } catch (err: any) {
+      errorMessage = err.message || "保存草稿失败，请稍后重试。";
     }
   }
 
@@ -243,11 +279,27 @@
 
       <!-- 发布按钮 -->
       <div class="form-actions">
+        {#if showDraftButton && draftHandler}
+          <button
+            onclick={handleSaveDraft}
+            class="draft-btn"
+            disabled={!user?._id}
+            type="button"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
+            保存草稿
+          </button>
+        {/if}
         <button
           onclick={handleSubmit}
           class="submit-btn"
           disabled={!user?._id}
         >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+          </svg>
           {submitButtonText}
         </button>
       </div>
@@ -408,11 +460,67 @@
     }
 
     /*
+      设计理念: 表单操作区域
+      - 按钮组布局，提供清晰的操作层级
+      - 草稿按钮为次要操作，发布按钮为主要操作
+    */
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        justify-content: flex-end;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    /*
+      设计理念: 草稿按钮
+      - 次要操作按钮，视觉层级低于主要的发布按钮
+      - 使用较浅的背景色和边框，表示这是一个辅助功能
+    */
+    .draft-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-md);
+        background-color: #ffffff;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all var(--transition-speed) ease;
+    }
+
+    .draft-btn:hover {
+        background-color: var(--hover-bg);
+        color: var(--text-primary);
+        border-color: var(--text-secondary);
+    }
+
+    .draft-btn:disabled {
+        background-color: var(--hover-bg);
+        color: var(--text-secondary);
+        border-color: var(--border-color);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .draft-btn svg,
+    .submit-btn svg {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    /*
       设计理念: 主操作按钮
       - 与导航栏的 "注册" 按钮样式完全一致，代表这是一个主要的、积极的操作。
     */
     .submit-btn {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
         padding: 0.75rem 2rem;
         border: none;
         border-radius: var(--border-radius-md);
