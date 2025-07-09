@@ -601,6 +601,80 @@ export async function searchArticles(
         };
     }
 }
+
+/**
+ * 获取24小时内更新的文章列表（管理员专用）
+ * @param {GetArticlesOptions} [options={}] - 查询选项
+ * @returns {Promise<DbResult<ArticleClient[]>>} 包含24小时内更新文章的数组
+ */
+export async function getRecentlyUpdatedArticles(options: GetArticlesOptions = {}): Promise<DbResult<ArticleClient[]>> {
+    const {
+        limit = 50,
+        skip = 0,
+        status = 'all',
+        includeBody = false
+    } = options;
+
+    try {
+        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+
+        // 计算24小时前的时间
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        // 构建查询条件
+        const query: any = {
+            updatedAt: { $gte: twentyFourHoursAgo }
+        };
+        
+        if (status !== 'all') {
+            query.status = status;
+        }
+
+        const projection: Record<string, 1> = {
+            title: 1,
+            summary: 1,
+            tags: 1,
+            authorId: 1,
+            authorName: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            status: 1,
+            likes: 1,
+        };
+        if (includeBody) {
+            projection.body = 1;
+        }
+
+        const articlesFromDb = await articlesCollection
+            .find(query)
+            .project(projection)
+            .sort({ updatedAt: -1 }) // 按更新时间倒序
+            .skip(skip)
+            .limit(limit)
+            .toArray();
+
+        // 将数据库文档映射为客户端安全的对象
+        const articlesForClient: ArticleClient[] = articlesFromDb.map((article): ArticleClient => ({
+            _id: article._id.toString(),
+            title: article.title,
+            summary: article.summary,
+            tags: article.tags,
+            authorId: article.authorId.toString(),
+            authorName: article.authorName,
+            createdAt: article.createdAt,
+            status: article.status,
+            likes: article.likes ?? 0,
+            ...(includeBody && { body: article.body }), // 条件性地包含 body
+        }));
+
+        return { data: articlesForClient, error: null };
+
+    } catch (error: any) {
+        console.error('Error fetching recently updated articles:', error);
+        return { data: null, error: { code: 'DB_ERROR', message: error.message || 'An unexpected error occurred while fetching recently updated articles.' } };
+    }
+}
+
 /**
  * 根据文章 ID 删除文章，并从所有用户的点赞列表中移除该文章
  * @param {string} articleId - 要删除的文章的 _id (字符串形式)
