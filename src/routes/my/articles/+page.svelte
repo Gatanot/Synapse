@@ -4,27 +4,48 @@
     // 假设后端会通过 load 函数传递 articles
     export let data: { articles: any[] };
 
-    let articles = [...data.articles];
+let articles = [...data.articles];
 
-    function toEditArticles(id: string) {
-        goto(`/my/articles/${id}/edit`);
-    }
+function toEditArticles(id: string) {
+    goto(`/my/articles/${id}/edit`);
+}
 
-    async function deleteArticle(id: string) {
-        if (!confirm('确定要删除这篇文章吗？此操作不可撤销。')) return;
-        try {
-            const res = await fetch(`/api/articles?_id=${id}`, { method: 'DELETE' });
-            const result = await res.json();
-            if (result.success) {
-                // 立即移除前端列表
-                articles = articles.filter(article => article._id !== id);
-            } else {
-                alert(result.message || '删除失败');
-            }
-        } catch (e) {
-            alert('网络错误，删除失败');
+let showDeleteModal = false;
+let pendingDeleteId: string | null = null;
+let deleteLoading = false;
+let deleteError = '';
+
+function openDeleteModal(id: string) {
+    pendingDeleteId = id;
+    showDeleteModal = true;
+    deleteError = '';
+}
+function closeDeleteModal() {
+    showDeleteModal = false;
+    pendingDeleteId = null;
+    deleteLoading = false;
+    deleteError = '';
+}
+
+async function confirmDeleteArticle() {
+    if (!pendingDeleteId) return;
+    deleteLoading = true;
+    deleteError = '';
+    try {
+        const res = await fetch(`/api/articles?_id=${pendingDeleteId}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+            articles = articles.filter(article => article._id !== pendingDeleteId);
+            closeDeleteModal();
+        } else {
+            deleteError = result.message || '删除失败';
         }
+    } catch (e) {
+        deleteError = '网络错误，删除失败';
+    } finally {
+        deleteLoading = false;
     }
+}
 </script>
 
 <h1>我的文章列表</h1>
@@ -42,16 +63,31 @@
                     >编辑</button>
                     <button 
                         type="button"
-                        on:click={() => deleteArticle(article._id)}
+                        on:click={() => openDeleteModal(article._id)}
                         class="delete-btn"
                     >删除</button>
                 </div>
             </div>
         {/each}
     </div>
-{:else}
-    <div class="empty-state">
-        <p>这里空空如也，不如动手创作第一篇文章？</p>
+
+{/if}
+
+{#if showDeleteModal}
+    <div class="modal-backdrop" tabindex="-1">
+        <div class="logout-modal" role="dialog" aria-modal="true">
+            <div class="modal-title">确认删除</div>
+            <div class="modal-content">确定要删除这篇文章吗？此操作不可撤销。</div>
+            {#if deleteError}
+                <div class="modal-error">{deleteError}</div>
+            {/if}
+            <div class="modal-actions">
+                <button class="modal-cancel" on:click={closeDeleteModal} disabled={deleteLoading}>取消</button>
+                <button class="modal-confirm" on:click={confirmDeleteArticle} disabled={deleteLoading}>
+                    {deleteLoading ? '正在删除...' : '确认删除'}
+                </button>
+            </div>
+        </div>
     </div>
 {/if}
 
@@ -128,4 +164,79 @@
         background: #ffffff;
         color: #000000;
     }
+/* 自定义弹窗样式（与 layout 保持一致） */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.25);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.logout-modal {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    padding: 2rem 2.5rem 1.5rem 2.5rem;
+    min-width: 280px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: modal-pop 0.18s cubic-bezier(.4,1.4,.6,1) both;
+}
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+.modal-content {
+    color: #555;
+    margin-bottom: 1.2rem;
+}
+.modal-error {
+    color: #d32f2f;
+    margin-bottom: 0.8rem;
+    font-size: 0.98rem;
+}
+.modal-actions {
+    display: flex;
+    gap: 1.2rem;
+}
+.modal-cancel, .modal-confirm {
+    min-width: 80px;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    border: none;
+    font-size: 1rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+}
+.modal-cancel {
+    background: #f5f5f5;
+    color: #555;
+}
+.modal-cancel:hover:enabled {
+    background: #e0e0e0;
+}
+.modal-confirm {
+    background: var(--text-primary);
+    color: #fff;
+}
+.modal-confirm:hover:enabled {
+    background: #424242;
+}
+.modal-confirm:disabled, .modal-cancel:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+@keyframes modal-pop {
+    0% { transform: scale(0.92); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
 </style>

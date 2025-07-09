@@ -75,6 +75,8 @@ async function handleVerifyCode() {
     }
 }
 
+let showSuccessModal = false;
+
 async function handleResetPassword() {
     errorMessage = null;
     if (!newPassword || newPassword.length < 6) {
@@ -90,8 +92,7 @@ async function handleResetPassword() {
         });
         const data = await res.json();
         if (data.success) {
-            alert('密码重置成功，请用新密码登录');
-            goto('/login');
+            showSuccessModal = true;
         } else {
             errorMessage = data.message;
         }
@@ -100,6 +101,11 @@ async function handleResetPassword() {
     } finally {
         isLoading = false;
     }
+}
+
+function gotoLogin() {
+    showSuccessModal = false;
+    goto('/login');
 }
 </script>
 
@@ -123,7 +129,6 @@ async function handleResetPassword() {
                 <h2>第一步：验证身份</h2>
                 <p>请输入您的邮箱地址和验证码</p>
             </div>
-            
             <div class="form-group">
                 <label for="email">邮箱地址</label>
                 <input 
@@ -134,7 +139,6 @@ async function handleResetPassword() {
                     class="form-input"
                 />
             </div>
-            
             <div class="form-group">
                 <label for="code">验证码</label>
                 <div class="input-with-button">
@@ -155,7 +159,6 @@ async function handleResetPassword() {
                     </button>
                 </div>
             </div>
-            
             <button 
                 on:click={handleVerifyCode} 
                 disabled={isLoading}
@@ -168,7 +171,6 @@ async function handleResetPassword() {
                 <h2>第二步：设置新密码</h2>
                 <p>请输入您的新密码（至少6位字符）</p>
             </div>
-            
             <div class="form-group">
                 <label for="newPassword">新密码</label>
                 <input 
@@ -179,7 +181,6 @@ async function handleResetPassword() {
                     class="form-input"
                 />
             </div>
-            
             <button 
                 on:click={handleResetPassword} 
                 disabled={isLoading}
@@ -188,12 +189,23 @@ async function handleResetPassword() {
                 {isLoading ? '重置中...' : '重置密码'}
             </button>
         {/if}
-        
         <div class="back-link">
             <a href="/login">返回登录页</a>
         </div>
     </div>
 </main>
+
+{#if showSuccessModal}
+    <div class="modal-backdrop" tabindex="-1">
+        <div class="logout-modal" role="dialog" aria-modal="true">
+            <div class="modal-title">密码重置成功</div>
+            <div class="modal-content">密码重置成功，请用新密码登录。</div>
+            <div class="modal-actions">
+                <button class="modal-confirm" on:click={gotoLogin}>去登录</button>
+            </div>
+        </div>
+    </div>
+{/if}
 
 <style>
     /* 
@@ -442,5 +454,77 @@ async function handleResetPassword() {
         .form-group {
             margin-bottom: 1.25rem;
         }
+    }
+
+    /* 自定义弹窗样式（与 layout 保持一致） */
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.25);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .logout-modal {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+        padding: 2rem 2.5rem 1.5rem 2.5rem;
+        min-width: 280px;
+        max-width: 90vw;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        animation: modal-pop 0.18s cubic-bezier(.4,1.4,.6,1) both;
+    }
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .modal-content {
+        color: #555;
+        margin-bottom: 1.2rem;
+    }
+    .modal-actions {
+        display: flex;
+        gap: 1.2rem;
+        margin-top: 0.5rem;
+    }
+    .modal-cancel, .modal-confirm {
+        min-width: 80px;
+        padding: 0.5rem 1.2rem;
+        border-radius: 6px;
+        border: none;
+        font-size: 1rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.18s, color 0.18s;
+    }
+    .modal-cancel {
+        background: #f5f5f5;
+        color: #555;
+    }
+    .modal-cancel:hover:enabled {
+        background: #e0e0e0;
+    }
+    .modal-confirm {
+        background: var(--text-primary);
+        color: #fff;
+    }
+    .modal-confirm:hover:enabled {
+        background: #424242;
+    }
+    .modal-confirm:disabled, .modal-cancel:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    @keyframes modal-pop {
+        0% { transform: scale(0.92); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
     }
 </style>
