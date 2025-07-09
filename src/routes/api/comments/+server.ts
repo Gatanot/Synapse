@@ -5,6 +5,9 @@ import { createComment, getCommentsByArticleId } from '$lib/server/db/commentCol
 import type { RequestHandler } from '@sveltejs/kit';
 import type { CommentClientInput } from '$lib/types/client';
 import type { CommentCreateShare } from '$lib/types/share';
+import { getArticleById } from '$lib/server/db/articleCollection';
+import { insertMessage } from '$lib/server/db/messageCollection';
+import { ObjectId } from 'mongodb';
 
 /**
  * POST /api/comments
@@ -70,6 +73,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         if (!creationResponse.data || !creationResponse.data.insertedId) {
             console.error('Comment creation succeeded but no insertedId was returned.');
             throw svelteKitError(500, 'Internal Server Error: Comment may have been created, but its ID could not be confirmed.');
+        }
+
+        // 写入消息集合，通知文章作者
+        const { data: article } = await getArticleById(clientInput.articleId);
+        if (article) {
+          await insertMessage({
+            userId: new ObjectId(article.authorId),
+            type: 'comment',
+            articleId: new ObjectId(article._id),
+            articleTitle: article.title,
+            commentId: new ObjectId(creationResponse.data.insertedId),
+            commentContent: clientInput.content,
+            fromUserId: new ObjectId(locals.user._id),
+            fromUserName: locals.user.name,
+            createdAt: new Date(),
+            isRead: false
+          });
         }
 
         return json({

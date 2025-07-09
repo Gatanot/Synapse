@@ -183,6 +183,11 @@
                     </a>
                 </li>
                 <li>
+                    <a href="/my/message" aria-label="消息">
+                        <span class="nav-link-text">消息</span>
+                    </a>
+                </li>
+                <li>
                     <button 
                         onclick={handleLogout}
                         aria-label="登出"

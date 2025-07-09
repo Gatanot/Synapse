@@ -3,6 +3,8 @@ import { ObjectId } from 'mongodb';
 import { getCollection, getClient } from '$lib/server/db/db';
 import type { UserSchema, ArticleSchema } from '$lib/schema';
 import type { RequestHandler } from './$types';
+import { getArticleById } from '$lib/server/db/articleCollection';
+import { insertMessage } from '$lib/server/db/messageCollection';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
     const { _id } = params;
@@ -98,6 +100,21 @@ export const POST: RequestHandler = async ({ params, locals }) => {
                     message: '点赞成功',
                     newLikesCount: article.likes + 1
                 };
+
+                // 写入消息集合，通知文章作者
+                const { data: articleInfo } = await getArticleById(_id);
+                if (articleInfo && locals.user) {
+                  await insertMessage({
+                    userId: new ObjectId(articleInfo.authorId),
+                    type: 'like',
+                    articleId: new ObjectId(articleInfo._id),
+                    articleTitle: articleInfo.title,
+                    fromUserId: new ObjectId(locals.user._id),
+                    fromUserName: locals.user.name,
+                    createdAt: new Date(),
+                    isRead: false
+                  });
+                }
             }
         });
 
