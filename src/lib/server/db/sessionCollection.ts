@@ -47,7 +47,8 @@ export async function createSession(
                 _id: userObjectId, // 遵循 SessionSchema 定义
                 name: userData.name,
                 email: userData.email,
-                articles: userData.articles || []
+                articles: userData.articles || [],
+                likes:userData.likes || []
             },
             expiresAt: expiresAt
         };

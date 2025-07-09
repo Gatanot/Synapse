@@ -2,10 +2,10 @@
 
 import { getCollection, getClient, ObjectId } from './db';
 import { addArticleToUser } from './userCollection'; // 假设它在同一目录
-import type { ArticleSchema, ArticleStatus } from '$lib/schema';
+import type { ArticleSchema, ArticleStatus, UserSchema } from '$lib/schema';
 import type { ArticleCreateShare } from '$lib/types/share';
 import type { ArticleClient, } from '$lib/types/client';
-import type { GetArticlesOptions } from '$lib/types/server';
+import type { GetArticlesOptions, SearchOptions } from '$lib/types/server';
 import type { DbResult } from '$lib/schema/db';
 import type { InsertOneResult } from 'mongodb';
 
@@ -56,7 +56,7 @@ export async function createArticle(articleData: ArticleCreateShare): Promise<Db
                 updatedAt: currentTime,
                 comments: [],
                 status: articleData.status || 'draft',
-                likes: []
+                likes:0
             };
 
             const result = await articlesCollection.insertOne(newArticle as ArticleSchema, { session });
@@ -101,7 +101,7 @@ export async function createArticle(articleData: ArticleCreateShare): Promise<Db
  */
 export async function getLatestArticles(options: GetArticlesOptions = {}): Promise<DbResult<ArticleClient[]>> {
     const {
-        limit = 10,
+        limit,
         skip = 0,
         status = 'published',
         includeBody = false
@@ -123,18 +123,24 @@ export async function getLatestArticles(options: GetArticlesOptions = {}): Promi
             authorName: 1,
             createdAt: 1,
             status: 1,
+            likes: 1, // 添加 likes 字段到投影
         };
         if (includeBody) {
             projection.body = 1;
         }
 
-        const articlesFromDb = await articlesCollection
+        let query_builder = articlesCollection
             .find(query)
             .project(projection)
             .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .toArray();
+            .skip(skip);
+
+        // 只有在提供 limit 时才应用限制
+        if (limit !== undefined) {
+            query_builder = query_builder.limit(limit);
+        }
+
+        const articlesFromDb = await query_builder.toArray();
 
         // 将数据库文档映射为客户端安全的对象
         const articlesForClient: ArticleClient[] = articlesFromDb.map((article): ArticleClient => ({
@@ -146,6 +152,7 @@ export async function getLatestArticles(options: GetArticlesOptions = {}): Promi
             authorName: article.authorName,
             createdAt: article.createdAt,
             status: article.status,
+            likes: article.likes ?? 0,
             ...(includeBody && { body: article.body }), // 条件性地包含 body
         }));
 
@@ -289,15 +296,14 @@ export async function updateArticleById(
             return {
                 data: null,
                 error: {
-                    code: 'UPDATE_FAILED',
-                    message: `Article with ID '${articleId} not found'.`,
+                    code: 'NOT_FOUND',
+                    message: `Article with ID ${articleId} not found.`,
                 },
             };
         }
-
         return { data: null, error: null };
     } catch (error: any) {
-        console.error(`Error updating article with ID ${articleId}:`, error);
+        console.error(`Error updating article ${articleId}:`, error);
         return {
             data: null,
             error: {
@@ -306,20 +312,20 @@ export async function updateArticleById(
             },
         };
     }
+
 }
 
 /**
  * 根据用户 ID 获取文章列表。
  * @param {string} userId - 用户的 ID。
- * @param {object} options - 查询选项。
- * @param {boolean} [options.includeBody=false] - 是否包含文章正文。
+ * @param {GetArticlesOptions} options - 查询选项。
  * @returns {Promise<DbResult<ArticleClient[]>>}
  */
 export async function getArticlesByUserId(
     userId: string,
-    options: { includeBody?: boolean } = {}
+    options: GetArticlesOptions = {}
 ): Promise<DbResult<ArticleClient[]>> {
-    const { includeBody = false } = options;
+    const { includeBody = false, status = 'all', limit, skip } = options;
 
     try {
         if (!ObjectId.isValid(userId)) {
@@ -335,6 +341,12 @@ export async function getArticlesByUserId(
         const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
         const userObjectId = new ObjectId(userId);
 
+        // 构建查询条件
+        const filter: any = { authorId: userObjectId };
+        if (status !== 'all') {
+            filter.status = status;
+        }
+
         const projection: Record<string, 1> = {
             title: 1,
             summary: 1,
@@ -343,16 +355,25 @@ export async function getArticlesByUserId(
             authorName: 1,
             createdAt: 1,
             status: 1,
+            likes: 1, // 添加 likes 字段到投影
         };
         if (includeBody) {
             projection.body = 1;
         }
 
-        const articlesFromDb = await articlesCollection
-            .find({ authorId: userObjectId })
+        let query = articlesCollection
+            .find(filter)
             .project(projection)
-            .sort({ createdAt: -1 })
-            .toArray();
+            .sort({ createdAt: -1 });
+        
+        if (skip) {
+            query = query.skip(skip);
+        }
+        if (limit) {
+            query = query.limit(limit);
+        }
+
+        const articlesFromDb = await query.toArray();
 
         const articlesForClient: ArticleClient[] = articlesFromDb.map((article) => ({
             _id: article._id.toString(),
@@ -363,6 +384,7 @@ export async function getArticlesByUserId(
             authorName: article.authorName,
             createdAt: article.createdAt,
             status: article.status,
+            likes: article.likes ?? 0, // 添加 likes 字段映射
             ...(includeBody && { body: article.body }),
         }));
         return { data: articlesForClient, error: null };
@@ -379,39 +401,69 @@ export async function getArticlesByUserId(
 }
 
 /**
- * 根据搜索关键词搜索文章，支持按标题、标签、作者名搜索
+ * 根据搜索关键词搜索文章，支持按标题、标签、作者名、内容搜索
+ * 如果精确匹配结果少于3个，会自动进行模糊搜索
  * @param {string} searchTerm - 搜索关键词
- * @param {GetArticlesOptions} options - 查询选项
+ * @param {SearchOptions} options - 查询选项
  * @returns {Promise<DbResult<ArticleClient[]>>} 搜索结果
  */
 export async function searchArticles(
     searchTerm: string, 
-    options: GetArticlesOptions = {}
+    options: SearchOptions = {}
 ): Promise<DbResult<ArticleClient[]>> {
     const {
         limit = 20,
         skip = 0,
         status = 'published',
-        includeBody = false
+        includeBody = false,
+        searchType = 'all'
     } = options;
 
     try {
         const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
 
-        // 构建搜索查询
-        const searchQuery: any = {
-            $and: [
-                // 只搜索已发布的文章（除非特别指定）
-                status !== 'all' ? { status } : {},
-                // 多字段模糊搜索
-                {
-                    $or: [
-                        { title: { $regex: searchTerm, $options: 'i' } },
-                        { tags: { $in: [new RegExp(searchTerm, 'i')] } },
-                        { authorName: { $regex: searchTerm, $options: 'i' } }
-                    ]
-                }
-            ]
+        // 构建基础查询
+        const baseQuery: any = status !== 'all' ? { status } : {};
+        
+        // 第一步：精确搜索
+        let searchConditions: any[] = [];
+        
+        // 根据搜索类型构建不同的搜索条件
+        switch (searchType) {
+            case 'title':
+                searchConditions = [
+                    { title: { $regex: searchTerm, $options: 'i' } }
+                ];
+                break;
+            case 'tags':
+                searchConditions = [
+                    { tags: { $in: [new RegExp(searchTerm, 'i')] } }
+                ];
+                break;
+            case 'author':
+                searchConditions = [
+                    { authorName: { $regex: searchTerm, $options: 'i' } }
+                ];
+                break;
+            case 'content':
+                searchConditions = [
+                    { body: { $regex: searchTerm, $options: 'i' } }
+                ];
+                break;
+            case 'all':
+            default:
+                searchConditions = [
+                    { title: { $regex: searchTerm, $options: 'i' } },
+                    { tags: { $in: [new RegExp(searchTerm, 'i')] } },
+                    { authorName: { $regex: searchTerm, $options: 'i' } },
+                    { body: { $regex: searchTerm, $options: 'i' } }
+                ];
+                break;
+        }
+
+        const exactSearchQuery: any = {
+            ...baseQuery,
+            $or: searchConditions
         };
 
         const projection: Record<string, 1> = {
@@ -422,15 +474,200 @@ export async function searchArticles(
             authorName: 1,
             createdAt: 1,
             status: 1,
+            likes: 1,
+        };
+        if (includeBody) {
+            projection.body = 1;
+        }
+
+        // 执行精确搜索
+        let articlesFromDb = await articlesCollection
+            .find(exactSearchQuery)
+            .project(projection)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .toArray();
+
+        let isFuzzySearch = false;
+        let fuzzySearchTermsUsed: string[] = [];
+
+        // 如果精确搜索结果少于3个且搜索词长度大于1，进行模糊搜索
+        if (articlesFromDb.length < 3 && searchTerm.length > 1) {
+            console.log(`精确搜索只找到 ${articlesFromDb.length} 个结果，开始模糊搜索...`);
+            
+            // 模糊搜索：分词搜索 + 部分匹配
+            const fuzzySearchConditions: any[] = [];
+            
+            // 1. 分词搜索（按空格、标点符号分割）
+            const words = searchTerm.split(/[\s\-_,，。！？；：、]/g)
+                .filter(word => word.trim().length > 0);
+            
+            // 2. 部分匹配（如果搜索词长度大于2，尝试每个字符的部分匹配）
+            const partialTerms: string[] = [];
+            if (searchTerm.length > 2) {
+                // 生成2-字符和3-字符的子串
+                for (let i = 0; i <= searchTerm.length - 2; i++) {
+                    partialTerms.push(searchTerm.substring(i, i + 2));
+                    if (i <= searchTerm.length - 3) {
+                        partialTerms.push(searchTerm.substring(i, i + 3));
+                    }
+                }
+            }
+            
+            const allSearchTerms = [...words, ...partialTerms].filter(term => term.length > 1);
+            fuzzySearchTermsUsed = [...words]; // 记录用于提示的主要分词
+            
+            // 构建模糊搜索条件
+            for (const term of allSearchTerms) {
+                switch (searchType) {
+                    case 'title':
+                        fuzzySearchConditions.push(
+                            { title: { $regex: term, $options: 'i' } }
+                        );
+                        break;
+                    case 'tags':
+                        fuzzySearchConditions.push(
+                            { tags: { $in: [new RegExp(term, 'i')] } }
+                        );
+                        break;
+                    case 'author':
+                        fuzzySearchConditions.push(
+                            { authorName: { $regex: term, $options: 'i' } }
+                        );
+                        break;
+                    case 'content':
+                        fuzzySearchConditions.push(
+                            { body: { $regex: term, $options: 'i' } }
+                        );
+                        break;
+                    case 'all':
+                    default:
+                        fuzzySearchConditions.push(
+                            { title: { $regex: term, $options: 'i' } },
+                            { tags: { $in: [new RegExp(term, 'i')] } },
+                            { authorName: { $regex: term, $options: 'i' } },
+                            { body: { $regex: term, $options: 'i' } }
+                        );
+                        break;
+                }
+            }
+
+            if (fuzzySearchConditions.length > 0) {
+                const fuzzySearchQuery: any = {
+                    ...baseQuery,
+                    $or: fuzzySearchConditions
+                };
+
+                // 执行模糊搜索，但排除已经找到的文章
+                const exactIds = articlesFromDb.map(article => article._id);
+                if (exactIds.length > 0) {
+                    fuzzySearchQuery._id = { $nin: exactIds };
+                }
+
+                const fuzzyArticles = await articlesCollection
+                    .find(fuzzySearchQuery)
+                    .project(projection)
+                    .sort({ createdAt: -1 })
+                    .limit(limit - articlesFromDb.length) // 剩余数量
+                    .toArray();
+
+                // 合并精确搜索和模糊搜索的结果
+                articlesFromDb = [...articlesFromDb, ...fuzzyArticles];
+                
+                if (fuzzyArticles.length > 0) {
+                    isFuzzySearch = true;
+                    console.log(`模糊搜索额外找到 ${fuzzyArticles.length} 个结果`);
+                }
+            }
+        }
+
+        // 将数据库文档映射为客户端安全的对象
+        const articlesForClient: ArticleClient[] = articlesFromDb.map((article): ArticleClient => ({
+            _id: article._id.toString(),
+            title: article.title,
+            summary: article.summary,
+            tags: article.tags,
+            authorId: article.authorId.toString(),
+            authorName: article.authorName,
+            createdAt: article.createdAt,
+            status: article.status,
+            likes: article.likes ?? 0,
+            ...(includeBody && { body: article.body }),
+        }));
+
+        // 在返回的数据中添加模糊搜索信息
+        const result: any = {
+            data: articlesForClient,
+            error: null
+        };
+
+        // 如果使用了模糊搜索，添加相关信息
+        if (isFuzzySearch && articlesForClient.length > 0) {
+            result.fuzzySearchInfo = {
+                originalTerm: searchTerm,
+                fuzzyTerms: fuzzySearchTermsUsed,
+                isFuzzySearch: true
+            };
+        }
+
+        return result;
+    } catch (error: any) {
+        console.error(`Error searching articles with term "${searchTerm}":`, error);
+        return {
+            data: null,
+            error: { code: 'SEARCH_ERROR', message: error.message }
+        };
+    }
+}
+
+/**
+ * 获取24小时内更新的文章列表（管理员专用）
+ * @param {GetArticlesOptions} [options={}] - 查询选项
+ * @returns {Promise<DbResult<ArticleClient[]>>} 包含24小时内更新文章的数组
+ */
+export async function getRecentlyUpdatedArticles(options: GetArticlesOptions = {}): Promise<DbResult<ArticleClient[]>> {
+    const {
+        limit = 50,
+        skip = 0,
+        status = 'all',
+        includeBody = false
+    } = options;
+
+    try {
+        const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+
+        // 计算24小时前的时间
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        // 构建查询条件
+        const query: any = {
+            updatedAt: { $gte: twentyFourHoursAgo }
+        };
+        
+        if (status !== 'all') {
+            query.status = status;
+        }
+
+        const projection: Record<string, 1> = {
+            title: 1,
+            summary: 1,
+            tags: 1,
+            authorId: 1,
+            authorName: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            status: 1,
+            likes: 1,
         };
         if (includeBody) {
             projection.body = 1;
         }
 
         const articlesFromDb = await articlesCollection
-            .find(searchQuery)
+            .find(query)
             .project(projection)
-            .sort({ createdAt: -1 })
+            .sort({ updatedAt: -1 }) // 按更新时间倒序
             .skip(skip)
             .limit(limit)
             .toArray();
@@ -445,18 +682,87 @@ export async function searchArticles(
             authorName: article.authorName,
             createdAt: article.createdAt,
             status: article.status,
+            likes: article.likes ?? 0,
             ...(includeBody && { body: article.body }), // 条件性地包含 body
         }));
 
-        return {
-            data: articlesForClient,
-            error: null
-        };
+        return { data: articlesForClient, error: null };
+
     } catch (error: any) {
-        console.error(`Error searching articles with term "${searchTerm}":`, error);
+        console.error('Error fetching recently updated articles:', error);
+        return { data: null, error: { code: 'DB_ERROR', message: error.message || 'An unexpected error occurred while fetching recently updated articles.' } };
+    }
+}
+
+/**
+ * 根据文章 ID 删除文章，并从所有用户的点赞列表中移除该文章
+ * @param {string} articleId - 要删除的文章的 _id (字符串形式)
+ * @returns {Promise<DbResult<null>>} 删除结果
+ */
+export async function deleteArticleById(articleId: string): Promise<DbResult<null>> {
+    const client = getClient();
+    const session = client.startSession();
+
+    try {
+        if (!ObjectId.isValid(articleId)) {
+            return {
+                data: null,
+                error: {
+                    code: 'INVALID_ID_FORMAT',
+                    message: `The provided article ID '${articleId}' has an invalid format.`,
+                },
+            };
+        }
+
+        let result: any = null;
+
+        await session.withTransaction(async () => {
+            const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
+            const usersCollection = await getCollection<UserSchema>('users');
+            const objectId = new ObjectId(articleId);
+
+            // 1. 删除文章
+            const deleteResult = await articlesCollection.deleteOne({ _id: objectId }, { session });
+            
+            if (deleteResult.deletedCount === 0) {
+                throw new Error(`Article with ID '${articleId}' not found.`);
+            }
+
+            // 2. 从所有用户的点赞列表中移除该文章ID
+            await usersCollection.updateMany(
+                { likes: objectId },
+                { 
+                    $pull: { likes: objectId },
+                    $set: { updatedAt: new Date() }
+                },
+                { session }
+            );
+
+            result = { success: true };
+        });
+
+        return { data: null, error: null };
+    } catch (error: any) {
+        console.error(`Error deleting article with ID ${articleId}:`, error);
+        
+        if (error.message.includes('not found')) {
+            return {
+                data: null,
+                error: {
+                    code: 'NOT_FOUND',
+                    message: error.message,
+                },
+            };
+        }
+
         return {
             data: null,
-            error: { code: 'SEARCH_ERROR', message: error.message }
+            error: {
+                code: 'DB_ERROR',
+                message: error.message || `An unexpected error occurred while deleting article ${articleId}.`,
+            },
         };
+    } finally {
+        await session.endSession();
     }
 }

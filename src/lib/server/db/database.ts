@@ -4,7 +4,9 @@ import { connectToDatabase } from './db';
 import { ensureArticleIndexes } from './articleCollection';
 import { ensureUserIndexes } from './userCollection';
 import { ensureSessionIndexes } from './sessionCollection';
-
+import { ensureCommentIndexes } from './commentCollection';
+import { ensureAdminIndexes } from './adminCollection';
+import { initializeAdminsComplete } from './adminCollection';
 /**
  * 统一确保所有集合的索引都已创建。
  * 这个函数应该在数据库连接成功后被调用。
@@ -15,6 +17,8 @@ export async function ensureAllIndexes() {
         await ensureUserIndexes();
         await ensureSessionIndexes();
         await ensureArticleIndexes();
+        await ensureCommentIndexes();
+        await ensureAdminIndexes();
         console.log("All indexes ensured successfully.");
     } catch (error: any) {
         if (error.codeName === 'IndexOptionsConflict' || error.code === 85) {
@@ -36,4 +40,10 @@ export async function ensureAllIndexes() {
 export async function initializeDatabase() {
     await connectToDatabase();
     await ensureAllIndexes();
+    initializeAdminsComplete({
+        name: "synapse",
+        email: "synapse@admin.com",
+        password: "admin123456",
+        signature: ""
+    })
 }

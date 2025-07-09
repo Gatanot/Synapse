@@ -1,5 +1,36 @@
-<script>
+<script lang="ts">
     let { article } = $props();
+    
+    // 标签滑动功能的状态管理
+    let tagsContainer = $state<HTMLDivElement>();
+    let scrollPosition = $state(0);
+    let isHovering = $state(false);
+    
+    // 处理鼠标滚轮事件
+    function handleWheel(event: WheelEvent) {
+        if (!tagsContainer || !isHovering) return;
+        
+        event.preventDefault();
+        
+        const container = tagsContainer;
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        
+        // 滚轮向上滚动时向左移动标签（显示更多标签）
+        const scrollDelta = event.deltaY > 0 ? -30 : 30;
+        scrollPosition = Math.max(0, Math.min(maxScroll, scrollPosition + scrollDelta));
+        
+        container.scrollLeft = scrollPosition;
+    }
+    
+    // 鼠标进入标签区域
+    function handleMouseEnter() {
+        isHovering = true;
+    }
+    
+    // 鼠标离开标签区域
+    function handleMouseLeave() {
+        isHovering = false;
+    }
 </script>
 
 <div class="article-card">
@@ -11,12 +42,23 @@
         <span class="date"
             >{new Date(article.createdAt).toLocaleDateString()}</span
         >
+        <span class="likes">赞同{article.likes ?? 0}</span>
     </div>
     <p class="article-card-summary">
-        {article.summary}
+        {article.summary.length > 30
+            ? article.summary.slice(0, 30) + "..."
+            : article.summary}
     </p>
     {#if article.tags && article.tags.length > 0}
-        <div class="article-card-tags">
+        <div 
+            class="article-card-tags"
+            bind:this={tagsContainer}
+            onwheel={handleWheel}
+            onmouseenter={handleMouseEnter}
+            onmouseleave={handleMouseLeave}
+            role="group"
+            aria-label="文章标签列表"
+        >
             {#each article.tags as tag (tag)}
                 <span class="tag">{tag}</span>
             {/each}
@@ -35,14 +77,19 @@
     .article-card {
         background-color: #ffffff; /* 卡片使用纯白背景，与浅灰页面背景形成对比 */
         border-radius: var(--border-radius-md);
-        padding: 1.5rem 2rem; /* 넉넉한 내부 여백은 고급스러움과 가독성을 높입니다. */
-        margin-bottom: 2rem; /* 카드 간의 충분한 간격을 확보하여 시각적 혼잡을 줄입니다. */
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
         box-shadow:
             0 1px 3px rgba(0, 0, 0, 0.06),
             0 2px 6px rgba(0, 0, 0, 0.04);
         transition:
             transform var(--transition-speed) ease-in-out,
             box-shadow var(--transition-speed) ease-in-out;
+        /* 宽度限制：确保卡片宽度一致，与外部网格布局配合 */
+        width: 100%;
+        max-width: 300px; /* 最大宽度限制，略大于网格最小宽度 */
+        min-width: 300px; /* 最小宽度限制，与网格最小宽度保持一致 */
+        box-sizing: border-box; /* 确保padding包含在宽度内 */
     }
 
     .article-card:hover {
@@ -60,6 +107,16 @@
     .article-card h2 {
         margin: 0 0 0.5rem 0;
         font-size: 1.5rem;
+        /* 标题多行截断：最多显示2行，超出部分用省略号替代 */
+        line-height: 1.4; /* 标题行高，略小于摘要行高 */
+        min-height: calc(2 * 1.4em);
+        max-height: calc(2 * 1.4em); /* 最多2行的高度 */
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* 最多显示2行 */
+        line-clamp: 2; /* 标准属性，兼容性增强 */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .article-card h2 a {
@@ -113,17 +170,62 @@
         margin: 0 0 1.5rem 0;
         line-height: 1.7; /* 提升阅读舒适度 */
         color: var(--text-primary);
+        min-height: calc(2 * 1.7em);
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* 核心：最多显示2行 */
+        line-clamp: 2; /* 标准属性，兼容性增强 */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     /* 
-      设计理念: 标签作为 "芯片 (Chips)"
+      设计理念: 标签作为 "芯片 (Chips)" - 现已增强为可滑动展示
       - 标签是分类元数据，使用 "芯片" 样式，使其看起来像可点击的实体。
       - 背景使用页面的主背景色，视觉上更轻量，与卡片主体形成区分。
+      - 新增功能：鼠标悬停时可通过滚轮左右滑动查看更多标签
     */
     .article-card-tags {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap; /* 1. 禁止换行，强制所有标签在同一行 */
         gap: 0.5rem;
+        overflow: hidden; /* 2. 隐藏超出容器宽度的内容 */
+        position: relative;
+        /* 渐变消失效果 - 右侧渐变 */
+        -webkit-mask-image: linear-gradient(
+            to right,
+            black 90%,
+            transparent 100%
+        );
+        mask-image: linear-gradient(to right, black 90%, transparent 100%);
+        
+        /* 新增：滑动功能样式 */
+        scroll-behavior: smooth; /* 平滑滚动效果 */
+        cursor: grab; /* 提示用户可以交互 */
+        user-select: none; /* 防止文本选择干扰滑动 */
+        
+        /* 过渡效果：当鼠标悬停时显示可滑动状态 */
+        transition: 
+            -webkit-mask-image var(--transition-speed) ease,
+            mask-image var(--transition-speed) ease,
+            cursor var(--transition-speed) ease;
+    }
+    
+    /* 悬停状态：增强视觉反馈，表明标签区域可交互 */
+    .article-card-tags:hover {
+        cursor: grab;
+        /* 悬停时的渐变效果更明显，提示有更多内容 */
+        -webkit-mask-image: linear-gradient(
+            to right,
+            black 85%,
+            transparent 100%
+        );
+        mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    }
+    
+    /* 活动状态：当鼠标按下时的视觉反馈 */
+    .article-card-tags:active {
+        cursor: grabbing;
     }
 
     .tag {
@@ -139,6 +241,7 @@
         cursor: pointer;
         transition: background-color var(--transition-speed) ease;
         */
+        flex-shrink: 0; /* 3. 防止标签被 Flexbox 压缩变形 */
     }
 
     /*

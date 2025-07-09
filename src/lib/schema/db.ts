@@ -16,3 +16,4 @@ export interface DbResult<T> {
     data: T | null;
     error: DbError | null;
 }
+

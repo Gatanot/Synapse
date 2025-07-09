@@ -1,33 +1,31 @@
 <script lang="ts">
-    import type { MessageClient } from "$lib/types/client/messageClient";
-    export let data: { messages: MessageClient[] };
+  import type { MessageClient } from '$lib/types/client/messageClient';
+  export let data: { messages: MessageClient[] };
 
-    // 标记单条消息为已读
-    async function markAsRead(id: string) {
-        // 提示: 在一个真实的应用中，这里会局部更新状态而不是整页刷新
-        // 以提供更流畅的用户体验。
-        await fetch("/api/message", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messageId: id }),
-        });
-        location.reload();
-    }
+  // 标记单条消息为已读
+  async function markAsRead(id: string) {
+    // 提示: 在一个真实的应用中，这里会局部更新状态而不是整页刷新
+    // 以提供更流畅的用户体验。
+    await fetch('/api/message', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageId: id })
+    });
+    location.reload(); 
+  }
 
-    // 批量标记为已读
-    async function markAllAsRead() {
-        await fetch("/api/message", { method: "PUT" });
-        location.reload();
-    }
+  // 批量标记为已读
+  async function markAllAsRead() {
+    await fetch('/api/message', { method: 'PUT' });
+    location.reload();
+  }
 </script>
 
 <div class="message-center-container">
     <div class="header">
         <h1>我的消息</h1>
-        {#if data.messages.some((m) => !m.isRead)}
-            <button class="btn btn-secondary" on:click={markAllAsRead}
-                >全部标为已读</button
-            >
+        {#if data.messages.some(m => !m.isRead)}
+            <button class="btn btn-secondary" on:click={markAllAsRead}>全部标为已读</button>
         {/if}
     </div>
 
@@ -40,9 +38,9 @@
             {#each data.messages as msg}
                 <li class="message-item" class:unread={!msg.isRead}>
                     <div class="message-icon">
-                        {#if msg.type === "like"}
+                        {#if msg.type === 'like'}
                             <span aria-label="赞">👍</span>
-                        {:else if msg.type === "comment"}
+                        {:else if msg.type === 'comment'}
                             <span aria-label="评论">💬</span>
                         {/if}
                     </div>
@@ -50,32 +48,22 @@
                     <div class="message-content">
                         <p class="main-text">
                             <b>{msg.fromUserName}</b>
-                            {#if msg.type === "like"}
+                            {#if msg.type === 'like'}
                                 赞了你的文章
-                            {:else if msg.type === "comment"}
+                            {:else if msg.type === 'comment'}
                                 评论了你的文章
                             {/if}
-                            <a href="/articles/{msg.articleId}"
-                                >《{msg.articleTitle}》</a
-                            >
+                            <a href="/articles/{msg.articleId}">《{msg.articleTitle}》</a>
                         </p>
-                        {#if msg.type === "comment" && msg.commentContent}
-                            <blockquote class="comment-quote">
-                                {msg.commentContent}
-                            </blockquote>
+                        {#if msg.type === 'comment' && msg.commentContent}
+                            <blockquote class="comment-quote">{msg.commentContent}</blockquote>
                         {/if}
                     </div>
-
+                    
                     <div class="message-meta">
-                        <small class="timestamp"
-                            >{new Date(msg.createdAt).toLocaleString()}</small
-                        >
+                        <small class="timestamp">{new Date(msg.createdAt).toLocaleString()}</small>
                         {#if !msg.isRead}
-                            <button
-                                class="btn btn-text"
-                                on:click={() => markAsRead(msg._id)}
-                                >标为已读</button
-                            >
+                          <button class="btn btn-text" on:click={() => markAsRead(msg._id)}>标为已读</button>
                         {/if}
                     </div>
                 </li>
@@ -86,10 +74,10 @@
 
 <style>
     /* 
-        设计理念:
-        - 遵循之前组件的布局和标题样式，保持一致性。
-        - 消息列表是信息的核心，每一条消息都应被视为一个独立的、清晰的单元。
-      */
+      设计理念:
+      - 遵循之前组件的布局和标题样式，保持一致性。
+      - 消息列表是信息的核心，每一条消息都应被视为一个独立的、清晰的单元。
+    */
     .message-center-container {
         max-width: 900px;
         margin: 0 auto;
@@ -103,7 +91,7 @@
         padding-bottom: 1rem;
         border-bottom: 1px solid var(--border-color);
     }
-
+    
     h1 {
         font-size: 2rem;
         font-weight: 600;
@@ -112,11 +100,11 @@
     }
 
     /* 
-        设计理念: 按钮层级
-        - "全部标为已读" 是一个次要操作，使用中性、柔和的按钮样式。
-        - "标为已读" 是单项操作，使用更轻量的纯文本按钮。
-        - 这体现了操作重要性的视觉区分。
-      */
+      设计理念: 按钮层级
+      - "全部标为已读" 是一个次要操作，使用中性、柔和的按钮样式。
+      - "标为已读" 是单项操作，使用更轻量的纯文本按钮。
+      - 这体现了操作重要性的视觉区分。
+    */
     .btn {
         padding: 0.6rem 1rem;
         border: 1px solid var(--border-color);
@@ -125,7 +113,7 @@
         color: var(--text-primary);
         font-weight: 500;
         cursor: pointer;
-        transition:
+        transition: 
             background-color var(--transition-speed) ease,
             color var(--transition-speed) ease;
     }
@@ -140,12 +128,12 @@
         color: var(--text-secondary);
         padding: 0.5rem;
     }
-
+    
     .btn.btn-text:hover {
         color: var(--text-primary);
         background-color: var(--hover-bg);
     }
-
+    
     .empty-state {
         text-align: center;
         padding: 4rem 2rem;
@@ -156,10 +144,10 @@
     }
 
     /* 
-        设计理念: 消息列表
-        - 使用 `ul` 但去除默认样式，将其作为布局容器。
-        - `gap` 属性提供了清晰、一致的间距。
-      */
+      设计理念: 消息列表
+      - 使用 `ul` 但去除默认样式，将其作为布局容器。
+      - `gap` 属性提供了清晰、一致的间距。
+    */
     .message-list {
         list-style: none;
         padding: 0;
@@ -170,11 +158,11 @@
     }
 
     /* 
-        设计理念: 消息项作为“材质”
-        - 每个 `li` 是一个独立的“材质卡片”，有自己的背景和边框，与其他内容分离。
-        - Flexbox 布局提供了灵活、强大的对齐能力。
-        - hover 效果提供了微妙的交互反馈。
-      */
+      设计理念: 消息项作为“材质”
+      - 每个 `li` 是一个独立的“材质卡片”，有自己的背景和边框，与其他内容分离。
+      - Flexbox 布局提供了灵活、强大的对齐能力。
+      - hover 效果提供了微妙的交互反馈。
+    */
     .message-item {
         display: flex;
         align-items: flex-start; /* 顶部对齐，以应对多行内容 */
@@ -189,12 +177,12 @@
     .message-item:hover {
         background-color: color-mix(in srgb, var(--background) 50%, white);
     }
-
+    
     /* 
-        设计理念: 未读状态的视觉提示
-        - 使用柔和的背景色变化来表示未读，而不是刺眼的颜色。
-        - 左侧边框的强调色是一个更微妙且优雅的指示器，符合“克制的视觉语言”。
-      */
+      设计理念: 未读状态的视觉提示
+      - 使用柔和的背景色变化来表示未读，而不是刺眼的颜色。
+      - 左侧边框的强调色是一个更微妙且优雅的指示器，符合“克制的视觉语言”。
+    */
     .message-item.unread {
         background-color: color-mix(in srgb, var(--highlight-color) 3%, white);
         border-left: 3px solid var(--highlight-color);
@@ -209,7 +197,7 @@
     .message-content {
         flex-grow: 1; /* 占据尽可能多的空间 */
     }
-
+    
     .main-text {
         margin: 0;
         line-height: 1.6;
@@ -230,10 +218,10 @@
     }
 
     /* 
-        设计理念: 引用块的人文关怀
-        - 评论内容是引用，使用 `blockquote` 样式，有清晰的视觉分隔。
-        - 颜色和斜体使其在视觉上退后一步，作为附属信息。
-      */
+      设计理念: 引用块的人文关怀
+      - 评论内容是引用，使用 `blockquote` 样式，有清晰的视觉分隔。
+      - 颜色和斜体使其在视觉上退后一步，作为附属信息。
+    */
     .comment-quote {
         margin: 0.75rem 0 0 0;
         padding-left: 1rem;
@@ -245,10 +233,10 @@
     }
 
     /* 
-        设计理念: 元信息(Meta)的对齐与层级
-        - 将时间戳和操作按钮组合在一起，并推到最右侧，与内容主体分离。
-        - `text-align: right` 保证了即使按钮消失，时间戳依然靠右。
-      */
+      设计理念: 元信息(Meta)的对齐与层级
+      - 将时间戳和操作按钮组合在一起，并推到最右侧，与内容主体分离。
+      - `text-align: right` 保证了即使按钮消失，时间戳依然靠右。
+    */
     .message-meta {
         margin-left: auto;
         padding-left: 1rem;

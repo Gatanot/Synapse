@@ -42,9 +42,11 @@ export async function createUser(userData: UserRegisterShare): Promise<DbResult<
 
         const dataToInsert: Omit<UserSchema, '_id'> = {
             name: userData.name,
+            signature: userData.signature || '', // 个人签名，默认为空字符串
             email: normalizedEmail,
             password: hashedPassword, // <--- 存储哈希后的密码
             articles: [],
+            likes: [], // 新增，初始化 likes 字段
             createdAt: new Date(),
             updatedAt: new Date(),
         };
@@ -178,5 +180,121 @@ export async function addArticleToUser(
     }
 
     return result;
+}
+
+/**
+ * 从用户的 likes 数组中移除文章 ID。
+ * 此函数设计为可以在事务中运行。
+ * @param {ObjectId} userId - 用户的 ObjectId。
+ * @param {ObjectId} articleId - 要移除的文章的 ObjectId。
+ * @param {object} [options={}] - 选项对象。
+ * @param {import('mongodb').ClientSession} [options.session] - 用于事务的会话对象。
+ * @returns {Promise<UpdateResult>}
+ */
+export async function removeArticleFromUserLikes(
+    userId: ObjectId,
+    articleId: ObjectId,
+    options: { session?: ClientSession } = {}
+): Promise<UpdateResult> {
+    const { session } = options;
+    const usersCollection = await getCollection<UserSchema>(COLLECTION_NAME);
+
+    const updateQuery: UpdateFilter<UserSchema> = {
+        $pull: {
+            likes: articleId,
+        },
+    };
+
+    const result = await usersCollection.updateOne(
+        { _id: userId }, // 过滤器
+        updateQuery,    // 更新操作
+        { session }     // 选项
+    );
+
+    return result;
+}
+
+/**
+ * 更新用户的基本信息（用户名和邮箱）。
+ * @param {string} userId - 用户的ID。
+ * @param {object} updateData - 要更新的数据。
+ * @param {string} [updateData.name] - 新的用户名。
+ * @param {string} [updateData.email] - 新的邮箱地址。
+ * @returns {Promise<DbResult<UpdateResult>>}
+ */
+export async function updateUserProfile(
+    userId: string,
+    updateData: { name?: string; email?: string; signature?: string }
+): Promise<DbResult<UpdateResult>> {
+    if (!userId || !ObjectId.isValid(userId)) {
+        const message = `Invalid ObjectId format for user ID: ${userId}`;
+        console.warn(message);
+        return { data: null, error: { code: 'INVALID_ID', message } };
+    }
+
+    if (!updateData.name && !updateData.email && !updateData.signature) {
+        const message = 'No update data provided.';
+        console.warn(message);
+        return { data: null, error: { code: 'INVALID_INPUT', message } };
+    }
+
+    try {
+        const collection = await getCollection<UserSchema>(COLLECTION_NAME);
+        
+        // 构建更新对象
+
+        const updateFields: Partial<UserSchema> = {
+            updatedAt: new Date()
+        };
+
+        if (updateData.name) {
+            updateFields.name = updateData.name.trim();
+        }
+
+        if (updateData.email) {
+            const normalizedEmail = updateData.email.trim().toLowerCase();
+            // 验证邮箱格式
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(normalizedEmail)) {
+                const message = `Invalid email format: ${updateData.email}`;
+                console.warn(message);
+                return { data: null, error: { code: 'VALIDATION_ERROR', message } };
+            }
+            // 检查邮箱是否已被其他用户使用
+            const existingUser = await collection.findOne({
+                email: normalizedEmail,
+                _id: { $ne: new ObjectId(userId) }
+            });
+            if (existingUser) {
+                const message = `Email '${normalizedEmail}' is already in use by another user.`;
+                console.warn(message);
+                return { data: null, error: { code: 'EMAIL_EXISTS', message } };
+            }
+            updateFields.email = normalizedEmail;
+        }
+
+        if (updateData.signature) {
+            // 允许 signature 为空字符串
+            updateFields.signature = (updateData.signature ?? '').toString();
+        }
+
+        const result = await collection.updateOne(
+            { _id: new ObjectId(userId) },
+            { $set: updateFields }
+        );
+
+        if (result.matchedCount === 0) {
+            const message = `User with ID '${userId}' not found.`;
+            console.warn(message);
+            return { data: null, error: { code: 'NOT_FOUND', message } };
+        }
+
+        return { data: result, error: null };
+
+    } catch (error: any) {
+        const message = 'An unexpected error occurred while updating user profile.';
+        console.error(`Error updating user profile for ID '${userId}': ${error.message}`, error);
+        return { data: null, error: { code: 'DB_ERROR', message } };
+    }
 }
 

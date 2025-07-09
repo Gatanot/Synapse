@@ -18,6 +18,7 @@ export function mapArticleToClient(article: ArticleSchema): ArticleClient {
         body: article.body, // 默认包含 body
         createdAt: article.createdAt,
         status: article.status,
+        likes: article.likes, // 增加 likes 字段映射
     };
 }
 /**
