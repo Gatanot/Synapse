@@ -4,42 +4,72 @@
     let { data } = $props();
     let drafts = $state([...data.drafts]);
 
+    // 确认对话框相关状态
+    let showConfirmDialog = $state(false);
+    let confirmAction = $state<() => void>(() => {});
+    let confirmMessage = $state('');
+    let confirmTitle = $state('');
+
     function toEditDraft(id: string) {
         goto(`/my/drafts/${id}/edit`);
     }
 
     async function deleteDraft(id: string) {
-        if (!confirm('确定要删除这篇草稿吗？此操作不可撤销。')) return;
-        try {
-            const res = await fetch(`/api/drafts/${id}`, { method: 'DELETE' });
-            const result = await res.json();
-            if (result.success) {
-                // 立即移除前端列表
-                drafts = drafts.filter(draft => draft._id !== id);
-            } else {
-                alert(result.message || '删除失败');
+        showConfirmDialog = true;
+        confirmTitle = '删除草稿';
+        confirmMessage = '确定要删除这篇草稿吗？此操作不可撤销。';
+        confirmAction = async () => {
+            try {
+                const res = await fetch(`/api/drafts/${id}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    // 立即移除前端列表
+                    drafts = drafts.filter(draft => draft._id !== id);
+                } else {
+                    alert(result.message || '删除失败');
+                }
+            } catch (e) {
+                alert('网络错误，删除失败');
             }
-        } catch (e) {
-            alert('网络错误，删除失败');
-        }
+        };
     }
 
     async function publishDraft(id: string) {
-        if (!confirm('确定要发布这篇草稿吗？发布后将对所有人可见。')) return;
-        try {
-            const res = await fetch(`/api/drafts/${id}/publish`, { method: 'POST' });
-            const result = await res.json();
-            if (result.success) {
-                // 发布成功，从草稿列表中移除
-                drafts = drafts.filter(draft => draft._id !== id);
-                alert('草稿发布成功！');
-                // 可选：跳转到已发布的文章页面
-                // goto(`/articles/${id}`);
-            } else {
-                alert(result.message || '发布失败');
+        showConfirmDialog = true;
+        confirmTitle = '发布草稿';
+        confirmMessage = '确定要发布这篇草稿吗？发布后将对所有人可见。';
+        confirmAction = async () => {
+            try {
+                const res = await fetch(`/api/drafts/${id}/publish`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    // 发布成功，从草稿列表中移除
+                    drafts = drafts.filter(draft => draft._id !== id);
+                    // 直接跳转到已发布的文章页面
+                    goto(`/articles/${id}`);
+                } else {
+                    alert(result.message || '发布失败');
+                }
+            } catch (e) {
+                alert('网络错误，发布失败');
             }
-        } catch (e) {
-            alert('网络错误，发布失败');
+        };
+    }
+
+    // 确认对话框操作
+    function handleConfirm() {
+        showConfirmDialog = false;
+        confirmAction();
+    }
+
+    function handleCancel() {
+        showConfirmDialog = false;
+    }
+
+    // 处理对话框背景点击
+    function handleOverlayClick(event: MouseEvent) {
+        if (event.target === event.currentTarget) {
+            handleCancel();
         }
     }
 
@@ -166,6 +196,39 @@
         </div>
     {/if}
 </main>
+
+<!-- 确认对话框 -->
+{#if showConfirmDialog}
+    <div 
+        class="dialog-overlay" 
+        onclick={handleOverlayClick}
+        onkeydown={(e) => e.key === 'Escape' && handleCancel()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dialog-title"
+        tabindex="-1"
+    >
+        <div 
+            class="dialog-container" 
+            role="document"
+        >
+            <div class="dialog-header">
+                <h3 id="dialog-title" class="dialog-title">{confirmTitle}</h3>
+            </div>
+            <div class="dialog-content">
+                <p>{confirmMessage}</p>
+            </div>
+            <div class="dialog-actions">
+                <button type="button" onclick={handleCancel} class="dialog-btn dialog-cancel-btn">
+                    取消
+                </button>
+                <button type="button" onclick={handleConfirm} class="dialog-btn dialog-confirm-btn">
+                    确认
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
 
 <style>
     /* 
@@ -571,6 +634,148 @@
 
         .new-article-btn {
             padding: 0.875rem 1.5rem;
+            font-size: 1rem;
+        }
+    }
+
+    /* 
+      设计理念: 确认对话框 - 与主站设计完全一致
+      - 采用黑白灰配色系统
+      - 使用与主站相同的阴影、圆角、过渡效果
+      - 按钮风格与主站按钮保持一致
+    */
+    .dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        animation: fadeIn 0.15s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .dialog-container {
+        background-color: #ffffff;
+        border-radius: var(--border-radius-md);
+        box-shadow:
+            0 4px 12px rgba(0, 0, 0, 0.15),
+            0 8px 24px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        width: 90%;
+        animation: slideIn 0.2s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .dialog-header {
+        padding: 1.5rem 1.5rem 0 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .dialog-title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .dialog-content {
+        padding: 0 1.5rem 1.5rem 1.5rem;
+    }
+
+    .dialog-content p {
+        margin: 0;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        font-size: 1rem;
+    }
+
+    .dialog-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        padding: 0 1.5rem 1.5rem 1.5rem;
+    }
+
+    .dialog-btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--border-radius-md);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition:
+            background-color var(--transition-speed) ease,
+            border-color var(--transition-speed) ease,
+            color var(--transition-speed) ease;
+    }
+
+    .dialog-cancel-btn {
+        background-color: #ffffff;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .dialog-cancel-btn:hover {
+        background-color: var(--background);
+        border-color: var(--text-secondary);
+        color: var(--text-primary);
+    }
+
+    .dialog-confirm-btn {
+        background-color: var(--text-primary);
+        color: #ffffff;
+        border: 1px solid var(--text-primary);
+    }
+
+    .dialog-confirm-btn:hover {
+        background-color: #424242;
+        border-color: #424242;
+    }
+
+    /* 对话框响应式设计 */
+    @media (max-width: 480px) {
+        .dialog-container {
+            width: 95%;
+            max-width: none;
+        }
+
+        .dialog-header,
+        .dialog-content,
+        .dialog-actions {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .dialog-actions {
+            flex-direction: column;
+        }
+
+        .dialog-btn {
+            padding: 0.875rem 1.25rem;
             font-size: 1rem;
         }
     }

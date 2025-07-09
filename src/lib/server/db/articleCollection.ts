@@ -100,7 +100,7 @@ export async function createArticle(articleData: ArticleCreateShare): Promise<Db
  */
 export async function getLatestArticles(options: GetArticlesOptions = {}): Promise<DbResult<ArticleClient[]>> {
     const {
-        limit = 10,
+        limit,
         skip = 0,
         status = 'published',
         includeBody = false
@@ -128,13 +128,18 @@ export async function getLatestArticles(options: GetArticlesOptions = {}): Promi
             projection.body = 1;
         }
 
-        const articlesFromDb = await articlesCollection
+        let query_builder = articlesCollection
             .find(query)
             .project(projection)
             .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .toArray();
+            .skip(skip);
+
+        // 只有在提供 limit 时才应用限制
+        if (limit !== undefined) {
+            query_builder = query_builder.limit(limit);
+        }
+
+        const articlesFromDb = await query_builder.toArray();
 
         // 将数据库文档映射为客户端安全的对象
         const articlesForClient: ArticleClient[] = articlesFromDb.map((article): ArticleClient => ({

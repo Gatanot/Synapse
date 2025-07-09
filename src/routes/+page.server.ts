@@ -7,7 +7,7 @@ import { getLatestArticles } from '$lib/server/db/articleCollection';
 export const load: PageServerLoad = async () => {
     try {
         const { data: articles, error } = await getLatestArticles({
-            limit: 12,
+            // 移除 limit 限制，获取所有已发布的文章
             status: 'published',
             includeBody: false
         });
