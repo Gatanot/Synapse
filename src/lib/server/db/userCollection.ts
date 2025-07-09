@@ -42,9 +42,9 @@ export async function createUser(userData: UserRegisterShare): Promise<DbResult<
 
         const dataToInsert: Omit<UserSchema, '_id'> = {
             name: userData.name,
-            signature: userData.signature || '', // 个人签名，默认为空字符串
+            signature: '', // 个人签名，默认为空字符串
             email: normalizedEmail,
-            password: hashedPassword, // <--- 存储哈希后的密码
+            password: hashedPassword,
             articles: [],
             likes: [], // 新增，初始化 likes 字段
             createdAt: new Date(),
@@ -240,7 +240,7 @@ export async function updateUserProfile(
 
     try {
         const collection = await getCollection<UserSchema>(COLLECTION_NAME);
-        
+
         // 构建更新对象
 
         const updateFields: Partial<UserSchema> = {
