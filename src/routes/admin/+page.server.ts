@@ -1,18 +1,18 @@
 import { getAdminStats } from '$lib/server/utils/adminStats';
+import { requireAdmin } from '$lib/server/utils/adminAuth';
 import type { AdminStats } from '$lib/server/utils/adminStats';
+import type { PageServerLoad } from './$types';
 
-export const load = async ({ locals }: { locals: any }) => {
-    // 这里可以添加权限检查逻辑
-    // 例如：检查用户是否为管理员
-    // if (!locals.user || !locals.user.isAdmin) {
-    //     throw redirect(302, '/login');
-    // }
+export const load: PageServerLoad = async ({ locals }) => {
+    // 使用权限检查中间件
+    const admin = await requireAdmin(locals.user);
     
     try {
         const stats: AdminStats = await getAdminStats();
         
         return {
-            stats
+            stats,
+            admin
         };
     } catch (error) {
         console.error('Error loading admin stats:', error);
@@ -23,7 +23,8 @@ export const load = async ({ locals }: { locals: any }) => {
                 totalArticles: 0,
                 totalComments: 0,
                 todayNew: 0
-            }
+            },
+            admin
         };
     }
 };

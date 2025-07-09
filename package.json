@@ -11,7 +11,8 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"docs": "typedoc",
-		"test": "vitest run"
+		"test": "vitest run",
+		"init-admin": "node scripts/init-admin.js"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^6.0.1",
@@ -25,6 +26,7 @@
 		"mongodb-memory-server": "^10.1.4",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
+		"tsx": "^4.20.3",
 		"typedoc": "^0.28.5",
 		"typescript": "^5.0.0",
 		"vite": "^6.2.6",
