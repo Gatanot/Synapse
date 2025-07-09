@@ -54,8 +54,6 @@ export async function createSession(
         };
 
         await sessions.insertOne(newSession);
-
-        console.log(`Session created: ${sessionId} for user ${userId}, expires at ${expiresAt.toISOString()}`);
         return { data: { sessionId, expiresAt }, error: null };
     } catch (error: any) {
         const message = 'An unexpected error occurred while creating the session.';

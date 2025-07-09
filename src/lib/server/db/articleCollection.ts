@@ -70,7 +70,8 @@ export async function createArticle(articleData: ArticleCreateShare): Promise<Db
             // 调用已经类型化的 userCollection 函数
             await addArticleToUser(authorObjectId, newArticleId, { session });
 
-            console.log(`Transaction successful: Article ${newArticleId} created and linked to user ${authorObjectId}.`);
+            
+            
         });
 
         if (creationResult) {
