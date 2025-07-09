@@ -235,6 +235,29 @@
                 </div>
             </div>
 
+            <!-- 管理员编辑卡片 - 仅超级管理员可见 -->
+            {#if data.admin.priority === 0}
+                <div class="admin-card admin-card-special" role="button" tabindex="0" 
+                    onclick={navigateToAdminEdit} 
+                    onkeydown={(e) => handleKeydown(e, navigateToAdminEdit)}>
+                    <div class="admin-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1L13.5 2.5L16.17 5.17L10.5 10.84L11.92 12.25L17.58 6.59L20.17 9.17L21 9ZM1 18.5C1 19.6 1.4 20.6 2.1 21.3C2.8 22 3.8 22.4 4.9 22.4C6 22.4 7 22 7.7 21.3C8.4 20.6 8.8 19.6 8.8 18.5C8.8 17.4 8.4 16.4 7.7 15.7C7 15 6 14.6 4.9 14.6C3.8 14.6 2.8 15 2.1 15.7C1.4 16.4 1 17.4 1 18.5ZM12 14.6C10.9 14.6 9.9 15 9.2 15.7C8.5 16.4 8.1 17.4 8.1 18.5C8.1 19.6 8.5 20.6 9.2 21.3C9.9 22 10.9 22.4 12 22.4C13.1 22.4 14.1 22 14.8 21.3C15.5 20.6 15.9 19.6 15.9 18.5C15.9 17.4 15.5 16.4 14.8 15.7C14.1 15 13.1 14.6 12 14.6ZM19.1 14.6C18 14.6 17 15 16.3 15.7C15.6 16.4 15.2 17.4 15.2 18.5C15.2 19.6 15.6 20.6 16.3 21.3C17 22 18 22.4 19.1 22.4C20.2 22.4 21.2 22 21.9 21.3C22.6 20.6 23 19.6 23 18.5C23 17.4 22.6 16.4 21.9 15.7C21.2 15 20.2 14.6 19.1 14.6Z"/>
+                        </svg>
+                    </div>
+                    <div class="admin-card-content">
+                        <h2>管理员编辑</h2>
+                        <p>添加或删除普通管理员，管理权限分配</p>
+                    </div>
+                    <div class="admin-card-arrow">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.59 16.59L13.17 12L8.59 7.41L10 6l6 6-6 6-1.41-1.41z"/>
+                        </svg>
+                    </div>
+                </div>
+            {/if}
+        </div>
+
         <!-- 统计信息概览 -->
         <section class="admin-stats">
             <div class="stats-header">
@@ -649,6 +672,27 @@
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: 2px solid #ffd700;
+    }
+
+    .admin-card-special .admin-card-icon {
+        background-color: rgba(255, 215, 0, 0.2);
+        color: #ffd700;
+    }
+
+    .admin-card-special .admin-card-content h2 {
+        color: white;
+    }
+
+    .admin-card-special .admin-card-content p {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .admin-card-special .admin-card-arrow {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .admin-card-special:hover .admin-card-arrow {
+        color: #ffd700;
     }
 
     .admin-card-special:hover {
