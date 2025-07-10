@@ -1,10 +1,41 @@
 <script lang="ts">
+    import Modal from './Modal.svelte';
+    import { userDeletedModal } from '$lib/stores/userModal';
     let { article } = $props();
     
     // 标签滑动功能的状态管理
     let tagsContainer = $state<HTMLDivElement>();
     let scrollPosition = $state(0);
     let isHovering = $state(false);
+
+    async function handleAuthorClick(event: MouseEvent) {
+        event.preventDefault();
+        const userId = article.authorId;
+        console.log('点击用户名，userId:', userId);
+        if (!userId) {
+            console.log('userId 为空，弹窗');
+            userDeletedModal.set(true);
+            return;
+        }
+        try {
+            const res = await fetch(`/api/users/${userId}/exists`);
+            const data = await res.json();
+            console.log('后端 exists 接口返回:', data);
+            if (data.exists) {
+                console.log('用户存在，跳转');
+                window.location.href = `/users/${userId}`;
+            } else {
+                console.log('用户不存在，弹窗');
+                userDeletedModal.set(true);
+            }
+        } catch (e) {
+            console.log('请求出错，弹窗', e);
+            userDeletedModal.set(true);
+        }
+    }
+    function closeModal() {
+        userDeletedModal.set(false);
+    }
     
     // 处理鼠标滚轮事件
     function handleWheel(event: WheelEvent) {
@@ -37,7 +68,9 @@
     <h2><a href="/articles/{article._id}">{article.title}</a></h2>
     <div class="article-card-meta">
         <span class="author">
-            <a href="/users/{article.authorId}">{article.authorName}</a>
+            <a href="/users/{article.authorId}" onclick={handleAuthorClick}>
+                {article.authorName ? article.authorName : '已注销用户'}
+            </a>
         </span>
         <span class="date"
             >{new Date(article.createdAt).toLocaleDateString()}</span
@@ -64,6 +97,7 @@
             {/each}
         </div>
     {/if}
+   
 </div>
 
 <style>

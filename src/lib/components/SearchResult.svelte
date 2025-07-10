@@ -1,5 +1,35 @@
-<script>
+<script lang="ts">
+    import Modal from './Modal.svelte';
+    import { userDeletedModal } from '$lib/stores/userModal';
     let { article } = $props();
+   
+    async function handleAuthorClick(event: MouseEvent) {
+        event.preventDefault();
+        const userId = article.authorId;
+        console.log('点击用户名，userId:', userId);
+        if (!userId) {
+            userDeletedModal.set(true);
+            return;
+        }
+        try {
+            const res = await fetch(`/api/users/${userId}/exists`);
+            const data = await res.json();
+            console.log('后端 exists 接口返回:', data);
+            if (data.exists) {
+                console.log('用户存在，跳转');
+                window.location.href = `/users/${userId}`;
+            } else {
+                userDeletedModal.set(true);
+                console.log('用户不存在，弹窗', $userDeletedModal);
+            }
+        } catch (e) {
+            console.log('请求出错，弹窗', e);
+            userDeletedModal.set(true);
+        }
+    }
+    function closeModal() {
+        userDeletedModal.set(false);
+    }
 </script>
 
 <div class="search-result">
@@ -8,7 +38,9 @@
     </h2>
     <div class="result-meta">
         <span class="author">
-            <a href="/users/{article.authorId}">{article.authorName}</a>
+            <a href="/users/{article.authorId}" on:click={handleAuthorClick}>
+                {article.authorName ? article.authorName : '已注销用户'}
+            </a>
         </span>
         <span class="date">
             {new Date(article.createdAt).toLocaleDateString()}
@@ -25,6 +57,16 @@
             {/each}
         </div>
     {/if}
+    {#if $userDeletedModal}
+        <Modal
+            title="用户已注销"
+            content="该用户已被注销，相关信息不可用。"
+            confirmText="确定"
+            on:confirm={closeModal}
+            on:cancel={closeModal}
+        />
+    {/if}
+ 
 </div>
 
 <style>
