@@ -70,8 +70,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
                 name: name.trim(),
                 email: email.trim().toLowerCase(),
                 articles: [], // 新用户没有文章
-                likes: [], // 新用户没有点赞
-                signature: '' // 新用户没有签名
+                likes: [] // 新用户没有点赞
             },
             sessionExpiryMs
         );
