@@ -1,3 +1,10 @@
+/**
+ * @fileoverview 管理员集合操作模块
+ * @description 提供管理员数据的 CRUD 操作，包括管理员初始化、权限检查等功能
+ * @author Synapse Team
+ * @since 2025-01-01
+ */
+
 import { getCollection, ObjectId } from './db';
 import type { AdminSchema } from '$lib/schema/adminSchema';
 import type { UserSchema } from '$lib/schema';
@@ -9,7 +16,10 @@ import bcrypt from 'bcryptjs';
 const COLLECTION_NAME = 'admins';
 
 /**
- * 为 admins 集合创建必要的索引。
+ * 为管理员集合创建必要的索引
+ * @description 创建 userId 唯一索引和 priority 索引以优化查询性能
+ * @returns {Promise<void>}
+ * @throws {Error} 当索引创建失败时抛出错误
  */
 export async function ensureAdminIndexes(): Promise<void> {
     try {

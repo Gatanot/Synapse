@@ -1,4 +1,9 @@
-// src/lib/server/db/commentCollection.ts
+/**
+ * @fileoverview 评论集合数据库操作模块
+ * @description 提供评论相关的数据库CRUD操作，包括评论创建、查询、删除功能
+ * @author Synapse Team
+ * @since 2025-01-01
+ */
 
 import { getCollection, ObjectId } from './db';
 import type { CommentSchema } from '$lib/schema';
@@ -10,7 +15,9 @@ import type { InsertOneResult, DeleteResult } from 'mongodb';
 const COLLECTION_NAME = 'comments';
 
 /**
- * 为 comments 集合创建必要的索引。
+ * 为评论集合创建必要的索引
+ * @description 创建评论查询性能优化所需的索引，包括文章ID、作者ID和创建时间索引
+ * @throws {Error} 当索引创建失败时抛出错误
  */
 export async function ensureCommentIndexes(): Promise<void> {
     try {

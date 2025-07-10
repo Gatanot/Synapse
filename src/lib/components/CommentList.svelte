@@ -1,3 +1,18 @@
+<!--
+    CommentList.svelte - 评论列表组件
+    
+    @component
+    @description 显示指定文章的评论列表，支持加载、错误处理和时间格式化
+    
+    @prop {string} articleId - 文章ID
+    @prop {boolean} [initialLoad=true] - 是否在组件挂载时自动加载评论
+    
+    @example
+    <CommentList 
+        {articleId} 
+        initialLoad={true}
+    />
+-->
 <!-- src/lib/components/CommentList.svelte -->
 <script lang="ts">
     import { onMount } from "svelte";
@@ -18,7 +33,11 @@
     let error = $state("");
     let hasLoaded = $state(false); 
 
-    // 获取评论列表
+    /**
+     * 获取评论列表
+     * @description 从API获取指定文章的评论数据并处理时间格式
+     * @throws {Error} 当API请求失败时设置错误状态
+     */
     async function fetchComments() {
         if (loading) return;
         loading = true;
@@ -46,7 +65,12 @@
         }
     }
 
-    // 格式化时间
+    /**
+     * 格式化时间显示
+     * @description 将日期对象转换为本地化的日期时间字符串
+     * @param {Date} date - 要格式化的日期对象
+     * @returns {string} 格式化后的日期时间字符串
+     */
     function formatDate(date: Date): string {
         return new Date(date).toLocaleDateString("zh-CN", {
             year: "numeric",

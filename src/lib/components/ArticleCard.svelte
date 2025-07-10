@@ -1,3 +1,22 @@
+<!--
+    ArticleCard.svelte - 文章卡片组件
+    
+    @component
+    @description 展示文章信息的卡片组件，包含标题、作者、创建时间、摘要和标签
+    
+    @prop {Object} article - 文章对象
+    @prop {string} article._id - 文章ID
+    @prop {string} article.title - 文章标题
+    @prop {string} article.authorId - 作者ID
+    @prop {string} article.authorName - 作者姓名
+    @prop {Date} article.createdAt - 创建时间
+    @prop {string} article.summary - 文章摘要
+    @prop {number} article.likes - 点赞数
+    @prop {string[]} article.tags - 文章标签数组
+    
+    @example
+    <ArticleCard {article} />
+-->
 <script lang="ts">
     import Modal from './Modal.svelte';
     import { userDeletedModal } from '$lib/stores/userModal';
@@ -8,6 +27,11 @@
     let scrollPosition = $state(0);
     let isHovering = $state(false);
 
+    /**
+     * 处理作者点击事件
+     * @description 检查用户是否存在，存在则跳转到用户页面，不存在则显示用户已注销弹窗
+     * @param {MouseEvent} event - 鼠标点击事件
+     */
     async function handleAuthorClick(event: MouseEvent) {
         event.preventDefault();
         const userId = article.authorId;
@@ -33,11 +57,18 @@
             userDeletedModal.set(true);
         }
     }
+    /**
+     * 关闭用户已注销提示弹窗
+     */
     function closeModal() {
         userDeletedModal.set(false);
     }
     
-    // 处理鼠标滚轮事件
+    /**
+     * 处理标签区域的鼠标滚轮事件
+     * @description 允许用户通过滚轮水平滚动标签列表
+     * @param {WheelEvent} event - 鼠标滚轮事件
+     */
     function handleWheel(event: WheelEvent) {
         if (!tagsContainer || !isHovering) return;
         
@@ -53,12 +84,16 @@
         container.scrollLeft = scrollPosition;
     }
     
-    // 鼠标进入标签区域
+    /**
+     * 鼠标进入标签区域时启用滚轮滚动
+     */
     function handleMouseEnter() {
         isHovering = true;
     }
     
-    // 鼠标离开标签区域
+    /**
+     * 鼠标离开标签区域时禁用滚轮滚动
+     */
     function handleMouseLeave() {
         isHovering = false;
     }

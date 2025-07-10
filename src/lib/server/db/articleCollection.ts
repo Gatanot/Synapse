@@ -1,7 +1,12 @@
-// src/lib/server/db/articleCollection.ts
+/**
+ * @fileoverview 文章集合数据库操作模块
+ * @description 提供文章相关的数据库CRUD操作，包括文章创建、查询、更新、删除和搜索功能
+ * @author Synapse Team
+ * @since 2025-01-01
+ */
 
 import { getCollection, getClient, ObjectId } from './db';
-import { addArticleToUser } from './userCollection'; // 假设它在同一目录
+import { addArticleToUser } from './userCollection';
 import type { ArticleSchema, ArticleStatus, UserSchema } from '$lib/schema';
 import type { ArticleCreateShare } from '$lib/types/share';
 import type { ArticleClient, } from '$lib/types/client';
@@ -12,7 +17,9 @@ import type { InsertOneResult } from 'mongodb';
 const COLLECTION_NAME = 'articles';
 
 /**
- * 为 articles 集合创建必要的索引。
+ * 为文章集合创建必要的索引
+ * @description 创建文章查询性能优化所需的索引，包括作者ID、标签和状态索引
+ * @throws {Error} 当索引创建失败时抛出错误
  */
 export async function ensureArticleIndexes(): Promise<void> {
     try {
@@ -29,9 +36,10 @@ export async function ensureArticleIndexes(): Promise<void> {
 }
 
 /**
- * 创建一篇新文章，并以事务方式将其 ID 添加到对应用户的 `articles` 数组中。
- * @param {ArticleCreateShare} articleData - 要创建的文章数据。
- * @returns {Promise<DbResult<InsertOneResult<ArticleSchema>>>} 操作结果。
+ * 创建新文章
+ * @description 以事务方式创建文章并将文章ID添加到用户的文章列表中
+ * @param {ArticleCreateShare} articleData - 文章创建数据
+ * @returns {Promise<DbResult<InsertOneResult<ArticleSchema>>>} 创建操作结果
  */
 export async function createArticle(articleData: ArticleCreateShare): Promise<DbResult<InsertOneResult<ArticleSchema>>> {
     const client = getClient();
