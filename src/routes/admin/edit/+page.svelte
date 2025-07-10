@@ -4,6 +4,7 @@
     import { goto } from '$app/navigation';
     import type { ActionData, PageData } from './$types';
     import type { AdminClient, UserClient } from '$lib/types/client';
+    import Modal from '$lib/components/Modal.svelte';
 
     interface AdminWithUser {
         admin: AdminClient;
@@ -44,19 +45,6 @@
 
     function goBack() {
         goto('/admin');
-    }
-
-    function handleModalClick(event: MouseEvent) {
-        if (event.target === event.currentTarget) {
-            cancelDelete();
-        }
-    }
-
-    function handleKeydown(event: KeyboardEvent, action: () => void) {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            action();
-        }
     }
 </script>
 
@@ -212,45 +200,22 @@
 
 <!-- 删除确认弹窗 -->
 {#if deleteConfirmId}
-    <div 
-        class="modal-overlay" 
-        onclick={handleModalClick}
-        onkeydown={(e) => { if (e.key === 'Escape') cancelDelete(); }}
-        role="dialog"
-        aria-modal="true"
-        tabindex="-1"
-    >
-        <div 
-            class="modal-content"
-            role="document"
-        >
-            <div class="modal-header">
-                <h3>确认删除</h3>
-            </div>
-            <div class="modal-body">
-                <p>确定要删除这个管理员吗？此操作不可撤销。</p>
-            </div>
-            <div class="modal-actions">
-                <form method="POST" action="?/deleteAdmin" use:enhance={() => {
-                    return async ({ update }) => {
-                        await update();
-                        deleteConfirmId = null;
-                        if (form?.success) {
-                            await invalidateAll();
-                        }
-                    };
-                }}>
-                    <input type="hidden" name="adminId" value={deleteConfirmId} />
-                    <button type="submit" class="confirm-delete-button">
-                        确认删除
-                    </button>
-                </form>
-                <button type="button" class="cancel-button" onclick={cancelDelete}>
-                    取消
-                </button>
-            </div>
-        </div>
-    </div>
+    <Modal
+        title="确认删除"
+        content="确定要删除这个管理员吗？此操作不可撤销。"
+        confirmText="确认删除"
+        cancelText="取消"
+        formAction="?/deleteAdmin"
+        formData={{ adminId: deleteConfirmId }}
+        useEnhance={true}
+        on:afterSubmit={async () => {
+            deleteConfirmId = null;
+            if (form?.success) {
+                await invalidateAll();
+            }
+        }}
+        on:cancel={cancelDelete}
+    />
 {/if}
 
 <style>
@@ -692,82 +657,6 @@
         line-height: 1.4;
     }
 
-    /* 弹窗样式 */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        backdrop-filter: blur(2px);
-    }
-
-    .modal-content {
-        background: var(--admin-bg-secondary);
-        border-radius: var(--admin-radius-lg);
-        box-shadow: var(--admin-shadow-heavy);
-        max-width: 420px;
-        width: 90%;
-        max-height: 80vh;
-        overflow-y: auto;
-        border: 1px solid var(--admin-border-color);
-    }
-
-    .modal-header {
-        padding: 24px;
-        border-bottom: 1px solid var(--admin-border-color);
-        background: var(--admin-bg-tertiary);
-    }
-
-    .modal-header h3 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--admin-text-primary);
-    }
-
-    .modal-body {
-        padding: 24px;
-        color: var(--admin-text-secondary);
-    }
-
-    .modal-body p {
-        margin: 0;
-        line-height: 1.6;
-        font-size: 14px;
-    }
-
-    .modal-actions {
-        display: flex;
-        gap: 12px;
-        padding: 24px;
-        border-top: 1px solid var(--admin-border-color);
-        background: var(--admin-bg-tertiary);
-    }
-
-    .confirm-delete-button {
-        background: var(--admin-danger-color);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: var(--admin-radius-sm);
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 14px;
-        transition: var(--admin-transition);
-        box-shadow: var(--admin-shadow-light);
-    }
-
-    .confirm-delete-button:hover {
-        background: var(--admin-danger-hover);
-        box-shadow: var(--admin-shadow-medium);
-    }
-
     /* 响应式设计 */
     @media (max-width: 1024px) {
         /* 移除最大宽度限制，由父容器控制宽度 */
@@ -823,15 +712,6 @@
 
         .form-actions {
             flex-direction: column;
-        }
-
-        .modal-actions {
-            flex-direction: column;
-        }
-
-        .modal-content {
-            width: 95%;
-            margin: 16px;
         }
 
         .section-header {

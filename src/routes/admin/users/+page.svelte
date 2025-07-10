@@ -5,6 +5,7 @@
     import { page } from '$app/stores';
     import type { ActionData, PageData } from './$types';
     import type { AdminClient, UserClient } from '$lib/types/client';
+    import Modal from '$lib/components/Modal.svelte';
 
     let { data, form } = $props<{ 
         data: PageData & { 
@@ -486,52 +487,23 @@
 
         <!-- 删除确认弹窗 -->
         {#if deleteConfirmId}
-            <div 
-                class="modal-mask" 
-                onclick={cancelDelete}
-                onkeydown={(e) => e.key === 'Escape' && cancelDelete()}
-                role="dialog"
-                aria-modal="true"
-                tabindex="-1"
-            >
-                <div 
-                    class="modal-dialog"
-                    role="document"
-                >
-                    <div class="modal-title">确认删除用户</div>
-                    <div class="modal-content">
-                        您确定要删除这个用户吗？此操作不可撤销。<br>
-                        <span class="warning-text">删除用户将同时删除其所有相关数据，包括文章和评论。</span>
-                    </div>
-                    <div class="modal-actions">
-                        <form 
-                            method="post" 
-                            action="?/deleteUser"
-                            use:enhance={() => {
-                                isDeleting = true;
-                                return async ({ update }) => {
-                                    isDeleting = false;
-                                    deleteConfirmId = null;
-                                    await update();
-                                    await invalidateAll();
-                                };
-                            }}
-                        >
-                            <input type="hidden" name="userId" value={deleteConfirmId} />
-                            <button 
-                                class="btn-primary" 
-                                type="submit"
-                                disabled={isDeleting}
-                            >
-                                {isDeleting ? '删除中...' : '确定'}
-                            </button>
-                        </form>
-                        <button type="button" class="btn-secondary" onclick={cancelDelete}>
-                            取消
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <Modal
+                title="确认删除用户"
+                content="您确定要删除这个用户吗？此操作不可撤销。<br><span class='warning-text'>删除用户将同时删除其所有相关数据，包括文章和评论。</span>"
+                confirmText={isDeleting ? '删除中...' : '确定'}
+                cancelText="取消"
+                loading={isDeleting}
+                formAction="?/deleteUser"
+                formData={{ userId: deleteConfirmId }}
+                useEnhance={true}
+                on:beforeSubmit={() => { isDeleting = true; }}
+                on:afterSubmit={async () => {
+                    isDeleting = false;
+                    deleteConfirmId = null;
+                    await invalidateAll();
+                }}
+                on:cancel={cancelDelete}
+            />
         {/if}
     </div>
 </main>
@@ -1076,103 +1048,12 @@
         line-height: 1.4;
     }
 
-    /* 弹窗样式 - 与网站主题保持一致 */
-    .modal-mask {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.25);
-        z-index: 2000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .modal-dialog {
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
-        padding: 2rem 2.5rem 1.5rem 2.5rem;
-        min-width: 280px;
-        max-width: 90vw;
-        text-align: center;
-        animation: modalIn 0.18s cubic-bezier(0.4, 1.6, 0.6, 1) both;
-    }
-
-    @keyframes modalIn {
-        from { 
-            transform: scale(0.95) translateY(30px); 
-            opacity: 0; 
-        }
-        to { 
-            transform: scale(1) translateY(0); 
-            opacity: 1; 
-        }
-    }
-
-    .modal-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        color: #212121; /* 直接使用主题色值 */
-    }
-
-    .modal-content {
-        color: #757575; /* 直接使用主题色值 */
-        margin-bottom: 1.5rem;
-        line-height: 1.5;
-    }
-
+    /* 警告文本样式 - 与其他页面保持一致 */
     .warning-text {
         color: #f44336;
         font-weight: 500;
         display: block;
         margin-top: 0.5rem;
-    }
-
-    .modal-actions {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-    }
-
-    .btn-primary {
-        background-color: #212121;
-        color: #fff;
-        border: none;
-        padding: 0.6rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-
-    .btn-primary:hover:not(:disabled) {
-        background-color: #000;
-    }
-
-    .btn-primary:disabled {
-        background-color: #9e9e9e;
-        cursor: not-allowed;
-    }
-
-    .btn-secondary {
-        background-color: #f5f5f5;
-        color: #757575;
-        border: 1px solid #e0e0e0;
-        padding: 0.6rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-    }
-
-    .btn-secondary:hover {
-        background-color: #e0e0e0;
-        color: #212121;
-        border-color: #212121;
     }
 
     /* 响应式设计 */
@@ -1203,15 +1084,6 @@
         .filter-button {
             flex: 1;
             min-width: 80px;
-        }
-
-        .modal-footer {
-            flex-direction: column;
-        }
-
-        .modal-content {
-            width: 95%;
-            margin: 16px;
         }
 
         .section-header {

@@ -5,6 +5,7 @@
     import { page } from '$app/stores';
     import type { ActionData, PageData } from './$types';
     import type { AdminClient, ArticleClient } from '$lib/types/client';
+    import Modal from '$lib/components/Modal.svelte';
 
     let { data, form } = $props<{ 
         data: PageData & { 
@@ -348,37 +349,25 @@
 
 <!-- 删除确认弹窗 -->
 {#if deleteConfirmId}
-    <div class="modal-overlay" onclick={cancelDelete}>
-        <div class="modal-content" onclick={(e) => e.stopPropagation()}>
-            <div class="modal-header">
-                <h3>确认删除文章</h3>
-            </div>
-            <div class="modal-body">
-                <p>确定要删除这篇文章吗？此操作不可撤销，文章的所有相关数据（包括评论和点赞）都将被删除。</p>
-            </div>
-            <div class="modal-actions">
-                <form method="POST" action="?/deleteArticle" use:enhance={() => {
-                    isDeleting = true;
-                    return async ({ update }) => {
-                        isDeleting = false;
-                        await update();
-                        deleteConfirmId = null;
-                        if (form?.success) {
-                            await invalidateAll();
-                        }
-                    };
-                }}>
-                    <input type="hidden" name="articleId" value={deleteConfirmId} />
-                    <button type="submit" class="confirm-delete-button" disabled={isDeleting}>
-                        {isDeleting ? '删除中...' : '确认删除'}
-                    </button>
-                </form>
-                <button type="button" class="cancel-button" onclick={cancelDelete}>
-                    取消
-                </button>
-            </div>
-        </div>
-    </div>
+    <Modal
+        title="确认删除文章"
+        content="确定要删除这篇文章吗？此操作不可撤销，文章的所有相关数据（包括评论和点赞）都将被删除。"
+        confirmText={isDeleting ? '删除中...' : '确认删除'}
+        cancelText="取消"
+        loading={isDeleting}
+        formAction="?/deleteArticle"
+        formData={{ articleId: deleteConfirmId }}
+        useEnhance={true}
+        on:beforeSubmit={() => { isDeleting = true; }}
+        on:afterSubmit={async () => {
+            isDeleting = false;
+            deleteConfirmId = null;
+            if (form?.success) {
+                await invalidateAll();
+            }
+        }}
+        on:cancel={cancelDelete}
+    />
 {/if}
 
 <style>
@@ -819,106 +808,6 @@
         line-height: 1.4;
     }
 
-    /* 弹窗样式 */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        backdrop-filter: blur(2px);
-    }
-
-    .modal-content {
-        background: var(--admin-bg-secondary);
-        border-radius: var(--admin-radius-lg);
-        box-shadow: var(--admin-shadow-heavy);
-        max-width: 420px;
-        width: 90%;
-        max-height: 80vh;
-        overflow-y: auto;
-        border: 1px solid var(--admin-border-color);
-    }
-
-    .modal-header {
-        padding: 24px;
-        border-bottom: 1px solid var(--admin-border-color);
-        background: var(--admin-bg-tertiary);
-    }
-
-    .modal-header h3 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--admin-text-primary);
-    }
-
-    .modal-body {
-        padding: 24px;
-        color: var(--admin-text-secondary);
-    }
-
-    .modal-body p {
-        margin: 0;
-        line-height: 1.6;
-        font-size: 14px;
-    }
-
-    .modal-actions {
-        display: flex;
-        gap: 12px;
-        padding: 24px;
-        border-top: 1px solid var(--admin-border-color);
-        background: var(--admin-bg-tertiary);
-    }
-
-    .confirm-delete-button {
-        background: var(--admin-danger-color);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: var(--admin-radius-sm);
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 14px;
-        transition: var(--admin-transition);
-        box-shadow: var(--admin-shadow-light);
-    }
-
-    .confirm-delete-button:hover:not(:disabled) {
-        background: var(--admin-danger-hover);
-        box-shadow: var(--admin-shadow-medium);
-    }
-
-    .confirm-delete-button:disabled {
-        background: var(--admin-text-tertiary);
-        cursor: not-allowed;
-        box-shadow: none;
-    }
-
-    .cancel-button {
-        background: var(--admin-bg-secondary);
-        color: var(--admin-text-secondary);
-        border: 1px solid var(--admin-border-color);
-        padding: 12px 24px;
-        border-radius: var(--admin-radius-sm);
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 14px;
-        transition: var(--admin-transition);
-    }
-
-    .cancel-button:hover {
-        background: var(--admin-bg-tertiary);
-        color: var(--admin-text-primary);
-        border-color: var(--admin-border-hover);
-    }
-
     /* 响应式设计 */
     @media (max-width: 768px) {
         .admin-articles-container {
@@ -944,15 +833,6 @@
 
         .search-input-group {
             flex-direction: column;
-        }
-
-        .modal-actions {
-            flex-direction: column;
-        }
-
-        .modal-content {
-            width: 95%;
-            margin: 16px;
         }
 
         .section-header {

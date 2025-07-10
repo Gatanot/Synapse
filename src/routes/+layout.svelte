@@ -1,5 +1,6 @@
 <script>
     import { goto } from "$app/navigation";
+    import Modal from '$lib/components/Modal.svelte';
 
     let { data, children } = $props();
 
@@ -48,94 +49,21 @@
 
 <!-- 
   设计理念: 
-  - 使用 <header> 作为承载导航的“材质卡片”。
-  - position: sticky 和 backdrop-filter 创造出悬浮的“磨砂玻璃”效果，这是现代UI中常见的科技感元素。
+  - 使用 <header> 作为承载导航的"材质卡片"。
+  - position: sticky 和 backdrop-filter 创造出悬浮的"磨砂玻璃"效果，这是现代UI中常见的科技感元素。
   - 它在滚动时会覆盖在内容之上，提供了清晰的视觉层级。
 -->
 <header class="main-header">
     {#if showLogoutDialog}
-        <div class="modal-mask">
-            <div class="modal-dialog">
-                <div class="modal-title">确认登出</div>
-                <div class="modal-content">确定要登出当前账号吗？</div>
-                <div class="modal-actions">
-                    <button class="btn-primary" onclick={confirmLogout}>确定</button>
-                    <button class="btn-secondary" onclick={cancelLogout}>取消</button>
-                </div>
-            </div>
-        </div>
+        <Modal
+            title="确认登出"
+            content="确定要登出当前账号吗？"
+            confirmText="确定"
+            cancelText="取消"
+            on:confirm={confirmLogout}
+            on:cancel={cancelLogout}
+        />
     {/if}
-<style>
-    .modal-mask {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0,0,0,0.25);
-        z-index: 2000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .modal-dialog {
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.12);
-        padding: 2rem 2.5rem 1.5rem 2.5rem;
-        min-width: 280px;
-        max-width: 90vw;
-        text-align: center;
-        animation: modalIn 0.18s cubic-bezier(.4,1.6,.6,1) both;
-    }
-    @keyframes modalIn {
-        from { transform: scale(0.95) translateY(30px); opacity: 0; }
-        to { transform: scale(1) translateY(0); opacity: 1; }
-    }
-    .modal-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        color: var(--text-primary);
-    }
-    .modal-content {
-        color: var(--text-secondary);
-        margin-bottom: 1.5rem;
-    }
-    .modal-actions {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-    }
-    .btn-primary {
-        background-color: var(--text-primary);
-        color: var(--surface-bg);
-        border: none;
-        padding: 0.6rem 1.5rem;
-        border-radius: var(--border-radius-md);
-        font-weight: 600;
-        cursor: pointer;
-        transition: background-color var(--transition-speed) ease;
-    }
-    .btn-primary:hover {
-        background-color: #000;
-    }
-    .btn-secondary {
-        background-color: var(--background);
-        color: var(--text-secondary);
-        border: 1px solid var(--border-color);
-        padding: 0.6rem 1.5rem;
-        border-radius: var(--border-radius-md);
-        font-weight: 600;
-        cursor: pointer;
-        transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease, border-color var(--transition-speed) ease;
-    }
-    .btn-secondary:hover {
-        background-color: var(--hover-bg);
-        color: var(--text-primary);
-        border-color: var(--text-primary);
-    }
-</style>
     <nav class="navbar">
         <div class="logo">
             <a href="/">Synapse</a>
@@ -171,7 +99,7 @@
         <!-- 
           设计理念:
           - 链接具有更大的点击区域和更柔和的背景反馈，而非简单的文字变色。
-          - 这种“药丸”或“芯片”形状的背景反馈是Material Design的常见实践。
+          - 这种"药丸"或"芯片"形状的背景反馈是Material Design的常见实践。
           - 对用户相关的操作（面板、登入登出）也使用图标，保持视觉统一性。
         -->
         <ul class="nav-links">
