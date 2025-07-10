@@ -6,6 +6,7 @@
     import type { ActionData, PageData } from './$types';
     import type { AdminClient, CommentClient } from '$lib/types/client';
     import Modal from '$lib/components/Modal.svelte';
+    import { userDeletedModal } from '$lib/stores/userModal';
 
     let { data, form } = $props<{ 
         data: PageData & { 
@@ -78,7 +79,19 @@
     }
 
     function viewAuthor(authorId: string) {
-        window.open(`/users/${authorId}`, '_blank');
+        if (!authorId) {
+            userDeletedModal.set(true);
+            return;
+        }
+        fetch(`/api/users/${authorId}/exists`).then(res => res.json()).then(data => {
+            if (data.exists) {
+                window.open(`/users/${authorId}`, '_blank');
+            } else {
+                userDeletedModal.set(true);
+            }
+        }).catch(() => {
+            userDeletedModal.set(true);
+        });
     }
 
     // 获取上次访问时间的显示文本

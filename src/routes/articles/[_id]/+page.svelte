@@ -6,6 +6,8 @@
 	import { marked } from "marked";
 	import CommentForm from "$lib/components/CommentForm.svelte";
 	import CommentList from "$lib/components/CommentList.svelte";
+	import Modal from '$lib/components/Modal.svelte';
+	import { userDeletedModal } from '$lib/stores/userModal';
 
 	// 接收用户数据
 	let { data } = $props<{ data: { user: UserClient | null } }>();
@@ -200,6 +202,35 @@
 		}
 		showCommentForm = true;
 	}
+
+	async function handleAuthorClick(event: MouseEvent) {
+		event.preventDefault();
+		const userId = article?.authorId;
+		console.log('点击用户名，userId:', userId);
+		if (!userId) {
+			console.log('userId 为空，弹窗');
+			userDeletedModal.set(true);
+			return;
+		}
+		try {
+			const res = await fetch(`/api/users/${userId}/exists`);
+			const data = await res.json();
+			console.log('后端 exists 接口返回:', data);
+			if (data.exists) {
+				console.log('用户存在，跳转');
+				window.location.href = `/users/${userId}`;
+			} else {
+				console.log('用户不存在，弹窗');
+				userDeletedModal.set(true);
+			}
+		} catch (e) {
+			console.log('请求出错，弹窗', e);
+			userDeletedModal.set(true);
+		}
+	}
+	function closeModal() {
+		userDeletedModal.set(false);
+	}
 </script>
 
 <main class="main-content">
@@ -223,9 +254,9 @@
 					<h1>{article.title}</h1>
 					<div class="article-meta">
 						<span class="author">
-							<a href="/users/{article.authorId}"
-								>{article.authorName}</a
-							>
+							<a href="/users/{article.authorId}" onclick={handleAuthorClick}>
+								{article.authorName ? article.authorName : '已注销用户'}
+							</a>
 						</span>
 						<span class="date"
 							>{formatDate(article.createdAt.toISOString())}</span
@@ -370,6 +401,16 @@
 			</div>
 		{/if}
 	</div>
+	{#if $userDeletedModal}
+	<Modal
+		title="用户已注销"
+		content="该用户已被注销，相关信息不可用。"
+		confirmText="确定"
+		on:confirm={closeModal}
+		on:cancel={closeModal}
+	/>
+{/if}
+
 </main>
 
 {#if !user && !loading && !error && article}
@@ -378,6 +419,7 @@
 		<a href="/login" class="login-link">去登录</a>
 	</div>
 {/if}
+
 
 <style>
 	/* === 基础布局与容器 === */
@@ -805,3 +847,5 @@
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 	}
 </style>
+
+

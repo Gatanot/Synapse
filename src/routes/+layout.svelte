@@ -1,6 +1,7 @@
 <script>
     import { goto } from "$app/navigation";
     import Modal from '$lib/components/Modal.svelte';
+    import { userDeletedModal } from '$lib/stores/userModal';
 
     let { data, children } = $props();
 
@@ -44,6 +45,10 @@
 
     function cancelLogout() {
         showLogoutDialog = false;
+    }
+
+    function closeUserDeletedModal() {
+        userDeletedModal.set(false);
     }
 </script>
 
@@ -148,6 +153,15 @@
 -->
 <main class="main-content">
     {@render children()}
+    {#if $userDeletedModal}
+        <Modal
+            title="用户已注销"
+            content="该用户已被注销，相关信息不可用。"
+            confirmText="确定"
+            on:confirm={closeUserDeletedModal}
+            on:cancel={closeUserDeletedModal}
+        />
+    {/if}
 </main>
 
 <style>
