@@ -5,6 +5,7 @@
     import { page } from '$app/stores';
     import type { ActionData, PageData } from './$types';
     import type { AdminClient, CommentClient } from '$lib/types/client';
+    import Modal from '$lib/components/Modal.svelte';
 
     let { data, form } = $props<{ 
         data: PageData & { 
@@ -384,37 +385,25 @@
 
 <!-- 删除确认弹窗 -->
 {#if deleteConfirmId}
-    <div class="modal-overlay" onclick={cancelDelete}>
-        <div class="modal-content" onclick={(e) => e.stopPropagation()}>
-            <div class="modal-header">
-                <h3>确认删除评论</h3>
-            </div>
-            <div class="modal-body">
-                <p>确定要删除这条评论吗？此操作不可撤销。</p>
-            </div>
-            <div class="modal-actions">
-                <form method="POST" action="?/deleteComment" use:enhance={() => {
-                    isDeleting = true;
-                    return async ({ update }) => {
-                        isDeleting = false;
-                        await update();
-                        deleteConfirmId = null;
-                        if (form?.success) {
-                            await invalidateAll();
-                        }
-                    };
-                }}>
-                    <input type="hidden" name="commentId" value={deleteConfirmId} />
-                    <button type="submit" class="confirm-delete-button" disabled={isDeleting}>
-                        {isDeleting ? '删除中...' : '确认删除'}
-                    </button>
-                </form>
-                <button type="button" class="cancel-button" onclick={cancelDelete}>
-                    取消
-                </button>
-            </div>
-        </div>
-    </div>
+    <Modal
+        title="确认删除评论"
+        content="确定要删除这条评论吗？此操作不可撤销。"
+        confirmText={isDeleting ? '删除中...' : '确认删除'}
+        cancelText="取消"
+        loading={isDeleting}
+        formAction="?/deleteComment"
+        formData={{ commentId: deleteConfirmId }}
+        useEnhance={true}
+        on:beforeSubmit={() => { isDeleting = true; }}
+        on:afterSubmit={async () => {
+            isDeleting = false;
+            deleteConfirmId = null;
+            if (form?.success) {
+                await invalidateAll();
+            }
+        }}
+        on:cancel={cancelDelete}
+    />
 {/if}
 
 <style>
@@ -979,123 +968,6 @@
     }
 
     /* 
-      设计理念: 模态对话框 - 遵循Material Design原则
-      - 使用适当的层级和阴影
-      - 清晰的操作区域和视觉反馈
-    */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        backdrop-filter: blur(2px);
-    }
-
-    .modal-content {
-        background: #ffffff;
-        border-radius: var(--border-radius-lg);
-        box-shadow:
-            0 20px 25px -5px rgba(0, 0, 0, 0.1),
-            0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        max-width: 400px;
-        width: 90%;
-        max-height: 80vh;
-        overflow-y: auto;
-        border: 1px solid var(--border-color);
-    }
-
-    .modal-header {
-        padding: 1.5rem 2rem;
-        border-bottom: 1px solid var(--border-color);
-        background-color: var(--background);
-    }
-
-    .modal-header h3 {
-        margin: 0;
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-
-    .modal-body {
-        padding: 2rem;
-        color: var(--text-secondary);
-    }
-
-    .modal-body p {
-        margin: 0;
-        line-height: 1.6;
-        font-size: 0.875rem;
-    }
-
-    .modal-actions {
-        display: flex;
-        gap: 0.75rem;
-        padding: 1.5rem 2rem;
-        border-top: 1px solid var(--border-color);
-        background-color: var(--background);
-    }
-
-    .confirm-delete-button {
-        background-color: #dc2626;
-        color: #ffffff;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--border-radius-md);
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 0.875rem;
-        transition: 
-            background-color var(--transition-speed) ease,
-            transform var(--transition-speed) ease;
-        box-shadow:
-            0 1px 3px rgba(0, 0, 0, 0.06),
-            0 2px 6px rgba(0, 0, 0, 0.04);
-    }
-
-    .confirm-delete-button:hover:not(:disabled) {
-        background-color: #b91c1c;
-        transform: translateY(-1px);
-        box-shadow:
-            0 4px 8px rgba(0, 0, 0, 0.08),
-            0 8px 16px rgba(0, 0, 0, 0.06);
-    }
-
-    .confirm-delete-button:disabled {
-        background-color: var(--text-secondary);
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-    }
-
-    .cancel-button {
-        background-color: #ffffff;
-        color: var(--text-primary);
-        border: 1px solid var(--border-color);
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--border-radius-md);
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 0.875rem;
-        transition: 
-            background-color var(--transition-speed) ease,
-            border-color var(--transition-speed) ease,
-            transform var(--transition-speed) ease;
-    }
-
-    .cancel-button:hover {
-        background-color: var(--hover-bg);
-        border-color: var(--text-primary);
-        transform: translateY(-1px);
-    }
-
-    /* 
       设计理念: 响应式设计 - 保持在各种设备上的良好体验
       - 优雅的布局适配
       - 保持内容的可读性和操作的便利性
@@ -1131,15 +1003,6 @@
 
         .comments-info {
             align-items: flex-start;
-        }
-
-        .modal-actions {
-            flex-direction: column;
-        }
-
-        .modal-content {
-            width: 95%;
-            margin: 1rem;
         }
     }
 
