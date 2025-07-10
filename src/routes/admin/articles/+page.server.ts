@@ -41,10 +41,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
                 searchError = '未找到指定的文章';
             }
         } else {
-            // 获取24小时内更新的文章列表
+            // 获取24小时内更新的已发布文章列表
             const { data: recentArticles, error } = await getRecentlyUpdatedArticles({
                 limit: 50,
-                status: 'all',
+                status: 'published',  // 只获取已发布的文章
                 includeBody: false
             });
             

@@ -304,7 +304,7 @@
                         </svg>
                     </div>
                     <div class="stat-number">{formatNumber(animatedStats.totalArticles)}</div>
-                    <div class="stat-label">总文章数</div>
+                    <div class="stat-label">已发布文章</div>
                 </div>
                 <div class="stat-card comments-stat">
                     <div class="stat-icon">

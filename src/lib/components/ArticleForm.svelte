@@ -55,15 +55,27 @@
   function handleTagInput(event: KeyboardEvent): void {
     if (event.key === "Enter" && tagInput.trim()) {
       event.preventDefault(); // 阻止回车提交表单
+      const trimmedTag = tagInput.trim();
+      
+      // 检查标签数量限制
       if (tags.length >= 10) {
         errors.tags = "最多只能添加10个标签";
         return;
       }
-      if (tags.includes(tagInput.trim())) {
+      
+      // 检查标签是否重复
+      if (tags.includes(trimmedTag)) {
         errors.tags = "标签不能重复";
         return;
       }
-      tags = [...tags, tagInput.trim()];
+      
+      // 检查标签长度限制
+      if (trimmedTag.length > 20) {
+        errors.tags = "每个标签最多只能包含20个字符";
+        return;
+      }
+      
+      tags = [...tags, trimmedTag];
       tagInput = "";
       errors.tags = "";
     }
@@ -233,7 +245,7 @@
 
       <!-- 标签 -->
       <div class="form-group">
-        <label for="tags">标签 (输入后按回车添加)</label>
+        <label for="tags">标签 (输入后按回车添加，每个标签最多20个字符)</label>
         <input
           type="text"
           id="tags"
@@ -241,6 +253,8 @@
           onkeydown={handleTagInput}
           class="form-input"
           class:is-error={errors.tags}
+          placeholder="输入标签，每个标签最多20个字符"
+          maxlength="20"
         />
         <div class="tag-list">
           {#each tags as tag}

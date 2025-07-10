@@ -88,28 +88,6 @@
         deleteConfirmId = null;
     }
 
-    function getStatusBadgeClass(status: string): string {
-        switch (status) {
-            case 'published':
-                return 'status-published';
-            case 'draft':
-                return 'status-draft';
-            default:
-                return 'status-unknown';
-        }
-    }
-
-    function getStatusText(status: string): string {
-        switch (status) {
-            case 'published':
-                return '已发布';
-            case 'draft':
-                return '草稿';
-            default:
-                return '未知';
-        }
-    }
-
     function viewArticle(articleId: string) {
         window.open(`/articles/${articleId}`, '_blank');
     }
@@ -120,8 +98,8 @@
 </script>
 
 <svelte:head>
-    <title>文章管理 - Synapse</title>
-    <meta name="description" content="管理平台文章，查看24小时内更新的文章或根据ID搜索文章" />
+    <title>已发布文章管理 - Synapse</title>
+    <meta name="description" content="管理平台已发布文章，查看24小时内更新的已发布文章或根据ID搜索文章" />
 </svelte:head>
 
 <main class="admin-articles-main">
@@ -135,7 +113,7 @@
                     </svg>
                     返回管理后台
                 </button>
-                <h1>文章管理</h1>
+                <h1>已发布文章管理</h1>
                 <div class="admin-badge">
                     管理员
                 </div>
@@ -208,7 +186,7 @@
                         </button>
                     {/if}
                 </div>
-                <p class="search-hint">输入完整的文章ID来搜索特定文章，留空显示24小时内更新的文章</p>
+                <p class="search-hint">输入完整的文章ID来搜索特定已发布文章，留空显示24小时内更新的已发布文章</p>
             </div>
         </div>
 
@@ -219,7 +197,7 @@
                     {#if data.searchId}
                         搜索结果
                     {:else}
-                        24小时内更新的文章
+                        24小时内更新的已发布文章
                     {/if}
                 </h2>
                 <div class="articles-count">
@@ -265,11 +243,6 @@
                         <span class="article-id">ID: {data.searchedArticle._id}</span>
                         <span class="article-author" onclick={() => viewAuthor(data.searchedArticle!.authorId)}>
                             作者: {data.searchedArticle.authorName}
-                        </span>
-                        <span class="article-status">
-                            <span class="status-badge {getStatusBadgeClass(data.searchedArticle.status)}">
-                                {getStatusText(data.searchedArticle.status)}
-                            </span>
                         </span>
                         <span class="article-likes">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -324,11 +297,6 @@
                                 <span class="article-id">ID: {article._id}</span>
                                 <span class="article-author" onclick={() => viewAuthor(article.authorId)}>
                                     作者: {article.authorName}
-                                </span>
-                                <span class="article-status">
-                                    <span class="status-badge {getStatusBadgeClass(article.status)}">
-                                        {getStatusText(article.status)}
-                                    </span>
                                 </span>
                                 <span class="article-likes">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -796,33 +764,6 @@
         width: 14px;
         height: 14px;
         color: var(--admin-danger-color);
-    }
-
-    .status-badge {
-        padding: 2px 8px;
-        border-radius: var(--admin-radius-sm);
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .status-published {
-        background: #e8f5e8;
-        color: var(--admin-success-color);
-        border: 1px solid #c8e6c9;
-    }
-
-    .status-draft {
-        background: #fff3e0;
-        color: var(--admin-warning-color);
-        border: 1px solid #ffcc02;
-    }
-
-    .status-unknown {
-        background: var(--admin-bg-tertiary);
-        color: var(--admin-text-tertiary);
-        border: 1px solid var(--admin-border-color);
     }
 
     .article-summary {
