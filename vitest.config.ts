@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+
 export default defineConfig({
   test: {
     env: {
@@ -16,7 +17,7 @@ export default defineConfig({
     deps: {
       inline: [/\$lib/],
     },
-    setupFiles: ['tests/server/db/setup.ts'],
+    setupFiles: ['tests/api/setup.ts'],
   },
   optimizeDeps: {
     include: ['$lib/server/articleCollection', '$lib/server/userCollection', '$lib/server/sessionCollection'],
@@ -26,7 +27,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '$lib': path.resolve(__dirname, './src/lib')
+      '$lib': path.resolve(__dirname, './src/lib'),
+      '$routes': path.resolve(__dirname, './src/routes')
     },
   },
 });
