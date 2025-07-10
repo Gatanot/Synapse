@@ -6,6 +6,7 @@ import { ensureUserIndexes } from './userCollection';
 import { ensureSessionIndexes } from './sessionCollection';
 import { ensureCommentIndexes } from './commentCollection';
 import { ensureAdminIndexes } from './adminCollection';
+import { ensureRegisterCodeIndexes } from './verifyCode';
 import { initializeAdminsComplete } from './adminCollection';
 /**
  * 统一确保所有集合的索引都已创建。
@@ -19,6 +20,7 @@ export async function ensureAllIndexes() {
         await ensureArticleIndexes();
         await ensureCommentIndexes();
         await ensureAdminIndexes();
+        await ensureRegisterCodeIndexes();
         console.log("All indexes ensured successfully.");
     } catch (error: any) {
         if (error.codeName === 'IndexOptionsConflict' || error.code === 85) {

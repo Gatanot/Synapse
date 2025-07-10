@@ -25,6 +25,14 @@ beforeEach(async () => {
   await articles.deleteMany({});
   const sessions = await getCollection('sessions');
   await sessions.deleteMany({});
+  const comments = await getCollection('comments');
+  await comments.deleteMany({});
+  const admins = await getCollection('admins');
+  await admins.deleteMany({});
+  const messages = await getCollection('messages');
+  await messages.deleteMany({});
+  const codes = await getCollection('register_codes');
+  await codes.deleteMany({});
 });
 
 afterEach(async () => {
@@ -35,6 +43,14 @@ afterEach(async () => {
   await articles.deleteMany({});
   const sessions = await getCollection('sessions');
   await sessions.deleteMany({});
+  const comments = await getCollection('comments');
+  await comments.deleteMany({});
+  const admins = await getCollection('admins');
+  await admins.deleteMany({});
+  const messages = await getCollection('messages');
+  await messages.deleteMany({});
+  const codes = await getCollection('register_codes');
+  await codes.deleteMany({});
 });
 
 describe('database.ts 数据库初始化与索引', () => {
@@ -60,7 +76,59 @@ describe('database.ts 数据库初始化与索引', () => {
     if (expiresAtIndex) expect(expiresAtIndex.expireAfterSeconds).toBe(0);
   });
 
+  it('ensureAllIndexes 应为 articles 集合创建必要索引', async () => {
+    await ensureAllIndexes();
+    const articlesCollection = await getCollection('articles');
+    const indexes = await articlesCollection.indexes();
+    
+    const authorIdIndex = indexes.find(idx => idx.key.authorId === 1);
+    expect(authorIdIndex).toBeDefined();
+    
+    const tagsIndex = indexes.find(idx => idx.key.tags === 1);
+    expect(tagsIndex).toBeDefined();
+    
+    const statusIndex = indexes.find(idx => idx.key.status === 1);
+    expect(statusIndex).toBeDefined();
+  });
+
+  it('ensureAllIndexes 应为 comments 集合创建必要索引', async () => {
+    await ensureAllIndexes();
+    const commentsCollection = await getCollection('comments');
+    const indexes = await commentsCollection.indexes();
+    
+    const articleIdIndex = indexes.find(idx => idx.key.articleId === 1);
+    expect(articleIdIndex).toBeDefined();
+    
+    const authorIdIndex = indexes.find(idx => idx.key.authorId === 1);
+    expect(authorIdIndex).toBeDefined();
+    
+    const createdAtIndex = indexes.find(idx => idx.key.createdAt === -1);
+    expect(createdAtIndex).toBeDefined();
+  });
+
+  it('ensureAllIndexes 应为 admins 集合创建必要索引', async () => {
+    await ensureAllIndexes();
+    const adminsCollection = await getCollection('admins');
+    const indexes = await adminsCollection.indexes();
+    
+    const userIdIndex = indexes.find(idx => idx.key.userId === 1);
+    expect(userIdIndex).toBeDefined();
+    if (userIdIndex) expect(userIdIndex.unique).toBe(true);
+    
+    const priorityIndex = indexes.find(idx => idx.key.priority === 1);
+    expect(priorityIndex).toBeDefined();
+  });
+
+  it('ensureAllIndexes 应为 register_codes 集合创建 TTL 索引', async () => {
+    await ensureAllIndexes();
+    const codesCollection = await getCollection('register_codes');
+    const indexes = await codesCollection.indexes();
+    const expiresAtIndex = indexes.find(idx => idx.key.expiresAt === 1);
+    expect(expiresAtIndex).toBeDefined();
+    if (expiresAtIndex) expect(expiresAtIndex.expireAfterSeconds).toBe(0);
+  });
+
   it('initializeDatabase 应能成功初始化数据库并创建索引', async () => {
     await expect(initializeDatabase()).resolves.not.toThrow();
   });
-}); 
+});
