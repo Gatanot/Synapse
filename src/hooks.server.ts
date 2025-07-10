@@ -49,7 +49,9 @@ export const handle: Handle = async ({ event, resolve }) => {
                     articles: user.articles?.map(id => id.toString()) || [],
                     // likes 数组中的 ObjectId 需要转换为字符串，如果字段不存在则使用空数组
                     likes: user.likes?.map(id => id.toString()) || [],
-                    signature: user.signature // 个人签名，默认为空字符串
+                    signature: user.signature, // 个人签名，默认为空字符串
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt
                 };
                 event.locals.user = userForClient;
 

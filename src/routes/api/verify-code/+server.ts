@@ -4,11 +4,12 @@ import { sendMail } from '$lib/server/utils/sendMail';
 import { saveRegisterCode, checkRegisterCode } from '$lib/server/db/verifyCode';
 import { getCollection } from '$lib/server/db/db';
 import type { RegisterCodeSchema } from '$lib/schema/verifyCodeSchema';
+import type { RequestHandler } from './$types';
 
 const CODE_EXPIRE_SECONDS = 600; // 验证码有效期10分钟（600秒）
 const CODE_RESEND_COOLDOWN = 60; // 重新发送验证码冷却60秒
 
-export const POST = async ({ request }) => {
+export const POST: RequestHandler = async ({ request }) => {
     const body = await request.json();
     const { email, action, code } = body;
     if (!email) return json({ success: false, message: '邮箱不能为空' }, { status: 400 });

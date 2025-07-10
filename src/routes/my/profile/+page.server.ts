@@ -27,7 +27,9 @@ export const load: PageServerLoad = async ({ locals }) => {
         email: userResult.data.email,
         articles: userResult.data.articles.map(id => id.toString()),
         likes: Array.isArray(userResult.data.likes) ? userResult.data.likes.map(id => id.toString()) : [],
-        signature: userResult.data.signature || ''
+        signature: userResult.data.signature || '',
+        createdAt: userResult.data.createdAt,
+        updatedAt: userResult.data.updatedAt
     };
 
     return {

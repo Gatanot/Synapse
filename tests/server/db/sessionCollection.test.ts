@@ -33,6 +33,7 @@ describe('sessionCollection 会话数据库操作', () => {
       name: TEST_USER.name,
       email: TEST_USER.email,
       articles: [],
+      likes: []
     }, 1000 * 60 * 10);
     expect(result.error).toBeNull();
     expect(result.data).toBeDefined();
@@ -43,6 +44,7 @@ describe('sessionCollection 会话数据库操作', () => {
       name: TEST_USER.name,
       email: TEST_USER.email,
       articles: [],
+      likes: []
     }, 1000 * 60 * 10);
     const sessionId = createRes.data!.sessionId;
     const result = await sessionDb.findSessionById(sessionId);
@@ -56,6 +58,7 @@ describe('sessionCollection 会话数据库操作', () => {
       name: TEST_USER.name,
       email: TEST_USER.email,
       articles: [],
+      likes: []
     }, 1000 * 60 * 10);
     const sessionId = createRes.data!.sessionId;
     const result = await sessionDb.deleteSessionById(sessionId);
@@ -64,4 +67,4 @@ describe('sessionCollection 会话数据库操作', () => {
     const findResult = await sessionDb.findSessionById(sessionId);
     expect(findResult.data).toBeNull();
   });
-}); 
+});
