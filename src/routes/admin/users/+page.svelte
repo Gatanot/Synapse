@@ -484,42 +484,26 @@
             {/if}
         </div>
 
-        <!-- 删除确认对话框 -->
+        <!-- 删除确认弹窗 -->
         {#if deleteConfirmId}
             <div 
-                class="modal-overlay" 
+                class="modal-mask" 
                 onclick={cancelDelete}
                 onkeydown={(e) => e.key === 'Escape' && cancelDelete()}
                 role="dialog"
-                tabindex="-1"
                 aria-modal="true"
-                aria-labelledby="modal-title"
+                tabindex="-1"
             >
                 <div 
-                    class="modal-content" 
+                    class="modal-dialog"
                     role="document"
                 >
-                    <div class="modal-header">
-                        <h3 id="modal-title">确认删除用户</h3>
-                        <button 
-                            class="modal-close" 
-                            onclick={cancelDelete} 
-                            type="button"
-                            aria-label="关闭对话框"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                            </svg>
-                        </button>
+                    <div class="modal-title">确认删除用户</div>
+                    <div class="modal-content">
+                        您确定要删除这个用户吗？此操作不可撤销。<br>
+                        <span class="warning-text">删除用户将同时删除其所有相关数据，包括文章和评论。</span>
                     </div>
-                    <div class="modal-body">
-                        <p>您确定要删除这个用户吗？此操作不可撤销。</p>
-                        <p class="warning-text">删除用户将同时删除其所有相关数据，包括文章和评论。</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="cancel-button" onclick={cancelDelete} type="button">
-                            取消
-                        </button>
+                    <div class="modal-actions">
                         <form 
                             method="post" 
                             action="?/deleteUser"
@@ -535,13 +519,16 @@
                         >
                             <input type="hidden" name="userId" value={deleteConfirmId} />
                             <button 
-                                class="confirm-delete-button" 
+                                class="btn-primary" 
                                 type="submit"
                                 disabled={isDeleting}
                             >
-                                {isDeleting ? '删除中...' : '确认删除'}
+                                {isDeleting ? '删除中...' : '确定'}
                             </button>
                         </form>
+                        <button type="button" class="btn-secondary" onclick={cancelDelete}>
+                            取消
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1089,139 +1076,103 @@
         line-height: 1.4;
     }
 
-    /* 弹窗样式 */
-    .modal-overlay {
+    /* 弹窗样式 - 与网站主题保持一致 */
+    .modal-mask {
         position: fixed;
         top: 0;
         left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.25);
+        z-index: 2000;
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 1000;
-        backdrop-filter: blur(2px);
+    }
+
+    .modal-dialog {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+        padding: 2rem 2.5rem 1.5rem 2.5rem;
+        min-width: 280px;
+        max-width: 90vw;
+        text-align: center;
+        animation: modalIn 0.18s cubic-bezier(0.4, 1.6, 0.6, 1) both;
+    }
+
+    @keyframes modalIn {
+        from { 
+            transform: scale(0.95) translateY(30px); 
+            opacity: 0; 
+        }
+        to { 
+            transform: scale(1) translateY(0); 
+            opacity: 1; 
+        }
+    }
+
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #212121; /* 直接使用主题色值 */
     }
 
     .modal-content {
-        background: var(--admin-bg-secondary);
-        border-radius: var(--admin-radius-lg);
-        box-shadow: var(--admin-shadow-heavy);
-        max-width: 420px;
-        width: 90%;
-        max-height: 80vh;
-        overflow-y: auto;
-        border: 1px solid var(--admin-border-color);
-    }
-
-    .modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 24px;
-        border-bottom: 1px solid var(--admin-border-color);
-        background: var(--admin-bg-tertiary);
-    }
-
-    .modal-header h3 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--admin-text-primary);
-    }
-
-    .modal-close {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border: none;
-        border-radius: var(--admin-radius-sm);
-        background: var(--admin-bg-secondary);
-        color: var(--admin-text-secondary);
-        cursor: pointer;
-        transition: var(--admin-transition);
-    }
-
-    .modal-close:hover {
-        background: var(--admin-bg-tertiary);
-        color: var(--admin-text-primary);
-    }
-
-    .modal-close svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    .modal-body {
-        padding: 24px;
-        color: var(--admin-text-secondary);
-    }
-
-    .modal-body p {
-        margin: 0 0 16px 0;
-        line-height: 1.6;
-        font-size: 14px;
-    }
-
-    .modal-body p:last-child {
-        margin-bottom: 0;
+        color: #757575; /* 直接使用主题色值 */
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
     }
 
     .warning-text {
-        color: var(--admin-danger-color);
+        color: #f44336;
         font-weight: 500;
+        display: block;
+        margin-top: 0.5rem;
     }
 
-    .modal-footer {
+    .modal-actions {
         display: flex;
-        gap: 12px;
-        padding: 24px;
-        border-top: 1px solid var(--admin-border-color);
-        background: var(--admin-bg-tertiary);
-        justify-content: flex-end;
+        gap: 1rem;
+        justify-content: center;
     }
 
-    .cancel-button,
-    .confirm-delete-button {
-        padding: 12px 24px;
+    .btn-primary {
+        background-color: #212121;
+        color: #fff;
         border: none;
-        border-radius: var(--admin-radius-sm);
+        padding: 0.6rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
         cursor: pointer;
-        font-weight: 500;
-        font-size: 14px;
-        transition: var(--admin-transition);
+        transition: background-color 0.2s ease;
     }
 
-    .cancel-button {
-        background: var(--admin-bg-secondary);
-        color: var(--admin-text-secondary);
-        border: 1px solid var(--admin-border-color);
+    .btn-primary:hover:not(:disabled) {
+        background-color: #000;
     }
 
-    .cancel-button:hover {
-        background: var(--admin-bg-tertiary);
-        color: var(--admin-text-primary);
-        border-color: var(--admin-border-hover);
-    }
-
-    .confirm-delete-button {
-        background: var(--admin-danger-color);
-        color: white;
-        box-shadow: var(--admin-shadow-light);
-    }
-
-    .confirm-delete-button:hover:not(:disabled) {
-        background: var(--admin-danger-hover);
-        box-shadow: var(--admin-shadow-medium);
-    }
-
-    .confirm-delete-button:disabled {
-        background: var(--admin-text-tertiary);
+    .btn-primary:disabled {
+        background-color: #9e9e9e;
         cursor: not-allowed;
-        box-shadow: none;
+    }
+
+    .btn-secondary {
+        background-color: #f5f5f5;
+        color: #757575;
+        border: 1px solid #e0e0e0;
+        padding: 0.6rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background-color: #e0e0e0;
+        color: #212121;
+        border-color: #212121;
     }
 
     /* 响应式设计 */

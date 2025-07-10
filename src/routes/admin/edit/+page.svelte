@@ -46,6 +46,12 @@
         goto('/admin');
     }
 
+    function handleModalClick(event: MouseEvent) {
+        if (event.target === event.currentTarget) {
+            cancelDelete();
+        }
+    }
+
     function handleKeydown(event: KeyboardEvent, action: () => void) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
@@ -206,8 +212,18 @@
 
 <!-- 删除确认弹窗 -->
 {#if deleteConfirmId}
-    <div class="modal-overlay" onclick={cancelDelete}>
-        <div class="modal-content" onclick={(e) => e.stopPropagation()}>
+    <div 
+        class="modal-overlay" 
+        onclick={handleModalClick}
+        onkeydown={(e) => { if (e.key === 'Escape') cancelDelete(); }}
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+    >
+        <div 
+            class="modal-content"
+            role="document"
+        >
             <div class="modal-header">
                 <h3>确认删除</h3>
             </div>
@@ -443,8 +459,13 @@
         border-top: 1px solid var(--admin-border-color);
     }
 
+    .add-form-container form {
+        width: 100%;
+    }
+
     .form-group {
         margin-bottom: 20px;
+        width: 100%;
     }
 
     .form-group label {
@@ -460,10 +481,7 @@
         padding: 12px 16px;
         border: 1px solid var(--admin-border-color);
         border-radius: var(--admin-radius-sm);
-        font-size: 14px;
-        transition: var(--admin-transition);
-        background: var(--admin-bg-secondary);
-        color: var(--admin-text-primary);
+        box-sizing: border-box;
     }
 
     .form-group input:focus {
@@ -479,6 +497,9 @@
     .form-actions {
         display: flex;
         gap: 12px;
+        width: 100%;
+        flex-wrap: wrap;
+        margin-top: 16px;
     }
 
     .submit-button {
@@ -533,8 +554,7 @@
 
     .admin-card {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
         padding: 20px;
         border: 1px solid var(--admin-border-color);
         border-radius: var(--admin-radius-md);
@@ -549,9 +569,11 @@
 
     .admin-info {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 16px;
         flex-grow: 1;
+        margin-bottom: 16px;
+        width: 100%;
     }
 
     .admin-avatar {
@@ -572,6 +594,11 @@
         height: 24px;
     }
 
+    .admin-details {
+        flex: 1;
+        min-width: 0; /* 让flex项目能够正确收缩 */
+    }
+
     .admin-details h3 {
         margin: 0 0 4px 0;
         font-size: 16px;
@@ -585,6 +612,8 @@
         color: var(--admin-text-secondary);
         font-size: 14px;
         line-height: 1.3;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 
     .admin-signature {
@@ -593,6 +622,8 @@
         font-size: 13px;
         font-style: italic;
         line-height: 1.3;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 
     .admin-meta {
@@ -602,6 +633,8 @@
         font-size: 12px;
         color: var(--admin-text-tertiary);
         line-height: 1.2;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 
     /* 删除按钮 */
@@ -736,6 +769,10 @@
     }
 
     /* 响应式设计 */
+    @media (max-width: 1024px) {
+        /* 移除最大宽度限制，由父容器控制宽度 */
+    }
+
     @media (max-width: 768px) {
         .admin-edit-container {
             padding: 0 16px;
@@ -750,6 +787,15 @@
 
         .header-content h1 {
             font-size: 24px;
+        }
+
+        .form-group input {
+            max-width: none;
+            min-width: initial;
+        }
+        
+        .form-actions {
+            max-width: none;
         }
 
         .admin-grid {
@@ -769,10 +815,11 @@
             width: 100%;
         }
 
-        .admin-actions {
-            width: 100%;
-            text-align: right;
-        }
+    .admin-actions {
+        display: flex;
+        justify-content: flex-end;
+        width: 100%;
+    }
 
         .form-actions {
             flex-direction: column;
@@ -811,6 +858,14 @@
 
         .section-header {
             padding: 16px;
+        }
+        
+        .add-form-container form {
+            width: 100%;
+        }
+        
+        .form-actions {
+            flex-direction: row;
         }
     }
 </style>

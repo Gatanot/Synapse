@@ -26,9 +26,9 @@ export async function getAdminStats(): Promise<AdminStats> {
             getCollection<UserSchema>('users').then(collection => 
                 collection.estimatedDocumentCount()
             ),
-            // 总文章数
+            // 总文章数（只统计已发布的文章）
             getCollection<ArticleSchema>('articles').then(collection => 
-                collection.estimatedDocumentCount()
+                collection.countDocuments({ status: 'published' })
             ),
             // 总评论数
             getCollection<CommentSchema>('comments').then(collection => 
@@ -40,7 +40,7 @@ export async function getAdminStats(): Promise<AdminStats> {
                     collection.countDocuments({ createdAt: { $gte: today } })
                 ),
                 getCollection<ArticleSchema>('articles').then(collection => 
-                    collection.countDocuments({ createdAt: { $gte: today } })
+                    collection.countDocuments({ createdAt: { $gte: today }, status: 'published' })
                 ),
                 getCollection<CommentSchema>('comments').then(collection => 
                     collection.countDocuments({ createdAt: { $gte: today } })
@@ -94,7 +94,7 @@ export async function getTodayStats(): Promise<{
                 collection.countDocuments({ createdAt: { $gte: today } })
             ),
             getCollection<ArticleSchema>('articles').then(collection => 
-                collection.countDocuments({ createdAt: { $gte: today } })
+                collection.countDocuments({ createdAt: { $gte: today }, status: 'published' })
             ),
             getCollection<CommentSchema>('comments').then(collection => 
                 collection.countDocuments({ createdAt: { $gte: today } })
