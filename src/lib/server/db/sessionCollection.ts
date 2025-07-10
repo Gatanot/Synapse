@@ -1,4 +1,9 @@
-// src/lib/server/db/sessionCollection.ts
+/**
+ * @fileoverview 会话集合数据库操作模块
+ * @description 提供用户会话相关的数据库操作，包括会话创建、查询、删除和TTL管理
+ * @author Synapse Team
+ * @since 2025-01-01
+ */
 
 import { getCollection, ObjectId } from './db';
 import type { SessionSchema } from '$lib/schema';
@@ -10,7 +15,9 @@ import crypto from 'node:crypto';
 const COLLECTION_NAME = 'sessions';
 
 /**
- * 为 sessions 集合创建必要的索引。
+ * 为会话集合创建必要的索引
+ * @description 创建TTL索引实现会话自动过期清理功能
+ * @throws {Error} 当索引创建失败时抛出错误
  */
 export async function ensureSessionIndexes(): Promise<void> {
     try {

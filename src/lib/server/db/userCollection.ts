@@ -1,12 +1,22 @@
+/**
+ * @fileoverview 用户集合数据库操作模块
+ * @description 提供用户相关的数据库CRUD操作，包括用户创建、查询、更新和删除功能
+ * @author Synapse Team
+ * @since 2025-01-01
+ */
+
 import { getCollection, ObjectId } from './db';
 import type { UserSchema, DbResult } from '$lib/schema';
 import type { UserRegisterShare } from '$lib/types/share';
 import type { InsertOneResult, UpdateResult, ClientSession, UpdateFilter, DeleteResult } from 'mongodb';
 import bcrypt from 'bcryptjs';
+
 const COLLECTION_NAME = 'users';
 
 /**
- * 为 users 集合创建必要的索引。
+ * 为用户集合创建必要的索引
+ * @description 确保用户邮箱字段的唯一性索引，防止重复邮箱注册
+ * @throws {Error} 当索引创建失败时抛出错误
  */
 export async function ensureUserIndexes(): Promise<void> {
     try {
@@ -14,13 +24,15 @@ export async function ensureUserIndexes(): Promise<void> {
         await usersCollection.createIndex({ email: 1 }, { unique: true });
         console.log("Unique index on users.email ensured.");
     } catch (error) {
-        throw error; // 错误由中心的 ensureIndexes 函数处理
+        throw error;
     }
 }
+
 /**
- * 创建新用户。该函数期望接收已处理好的数据（例如，密码已哈希）。
- * @param {UserRegisterShare} userData - 要创建的用户数据，不包含数据库生成的字段。
- * @returns {Promise<DbResult<InsertOneResult<UserSchema>>>}
+ * 创建新用户
+ * @description 创建新用户账户，包括邮箱唯一性验证和密码哈希处理
+ * @param {UserRegisterShare} userData - 用户注册数据，包含姓名、邮箱和密码
+ * @returns {Promise<DbResult<InsertOneResult<UserSchema>>>} 数据库操作结果
  */
 export async function createUser(userData: UserRegisterShare): Promise<DbResult<InsertOneResult<UserSchema>>> {
 
@@ -65,6 +77,11 @@ export async function createUser(userData: UserRegisterShare): Promise<DbResult<
  * 根据邮箱地址查找用户 (不区分大小写)。
  * @param {string} email - 要查找的用户的邮箱地址
  * @returns {Promise<DbResult<UserSchema | null>>}
+/**
+ * 根据邮箱查找用户
+ * @description 通过邮箱地址查找用户，包含邮箱格式验证和规范化处理
+ * @param {string} email - 用户邮箱地址
+ * @returns {Promise<DbResult<UserSchema | null>>} 查询结果，找到用户或null
  */
 export async function findUserByEmail(email: string): Promise<DbResult<UserSchema | null>> {
     if (!email || typeof email !== 'string' || email.trim() === '') {
@@ -85,7 +102,6 @@ export async function findUserByEmail(email: string): Promise<DbResult<UserSchem
     try {
         const collection = await getCollection<UserSchema>(COLLECTION_NAME);
         const user = await collection.findOne({ email: normalizedEmail });
-        // 找到或没找到都是成功查询, 只是 data 可能为 null
         return { data: user, error: null };
     } catch (error: any) {
         const message = 'An unexpected error occurred while fetching the user.';
@@ -94,11 +110,11 @@ export async function findUserByEmail(email: string): Promise<DbResult<UserSchem
     }
 }
 
-
 /**
- * 根据用户ID查找用户。
- * @param {string} userId
- * @returns {Promise<DbResult<UserSchema | null>>}
+ * 根据用户ID查找用户
+ * @description 通过ObjectId查找指定用户，包含ID格式验证
+ * @param {string} userId - 用户ObjectId字符串
+ * @returns {Promise<DbResult<UserSchema | null>>} 查询结果，找到用户或null
  */
 export async function findUserById(userId: string): Promise<DbResult<UserSchema | null>> {
     if (!userId || !ObjectId.isValid(userId)) {
@@ -121,6 +137,11 @@ export async function findUserById(userId: string): Promise<DbResult<UserSchema 
  * 根据ID删除用户。
  * @param {string} id - 用户的ID。
  * @returns {Promise<DbResult<DeleteResult>>}
+/**
+ * 删除指定用户
+ * @description 根据用户ID删除用户记录，包含ID格式验证
+ * @param {any} id - 用户ID（ObjectId或字符串格式）
+ * @returns {Promise<DbResult<DeleteResult>>} 删除操作结果
  */
 export async function deleteUser(id: any): Promise<DbResult<DeleteResult>> {
     if (!id || !ObjectId.isValid(id)) {
@@ -145,14 +166,15 @@ export async function deleteUser(id: any): Promise<DbResult<DeleteResult>> {
         return { data: null, error: { code: 'DB_ERROR', message } };
     }
 }
+
 /**
- * 将一篇文章的 ID 添加到用户的 articles 数组中。
- * 此函数设计为可以在事务中运行。
- * @param {ObjectId} userId - 用户的 ObjectId。
- * @param {ObjectId} articleId - 要添加的文章的 ObjectId。
- * @param {object} [options={}] - 选项对象。
- * @param {import('mongodb').ClientSession} [options.session] - 用于事务的会话对象。
- * @returns {Promise<UpdateResult>}
+ * 将文章ID添加到用户的文章数组中
+ * @description 更新用户的articles字段，支持事务操作
+ * @param {ObjectId} userId - 用户的ObjectId
+ * @param {ObjectId} articleId - 要添加的文章ObjectId
+ * @param {object} [options={}] - 选项配置
+ * @param {ClientSession} [options.session] - 事务会话对象
+ * @returns {Promise<UpdateResult>} 更新操作结果
  */
 export async function addArticleToUser(
     userId: ObjectId,
@@ -215,12 +237,15 @@ export async function removeArticleFromUserLikes(
 }
 
 /**
- * 更新用户的基本信息（用户名和邮箱）。
- * @param {string} userId - 用户的ID。
- * @param {object} updateData - 要更新的数据。
- * @param {string} [updateData.name] - 新的用户名。
- * @param {string} [updateData.email] - 新的邮箱地址。
- * @returns {Promise<DbResult<UpdateResult>>}
+/**
+ * 更新用户基本信息
+ * @description 更新用户的姓名、邮箱和个人签名等基本信息
+ * @param {string} userId - 用户ID
+ * @param {object} updateData - 要更新的数据
+ * @param {string} [updateData.name] - 新的用户姓名
+ * @param {string} [updateData.email] - 新的邮箱地址
+ * @param {string} [updateData.signature] - 新的个人签名
+ * @returns {Promise<DbResult<UpdateResult>>} 更新操作结果
  */
 export async function updateUserProfile(
     userId: string,

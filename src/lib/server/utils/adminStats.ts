@@ -1,8 +1,21 @@
-// src/lib/server/utils/adminStats.ts
+/**
+ * @fileoverview 管理员统计数据模块
+ * @description 提供管理后台的数据统计功能，包括用户、文章、评论的统计信息
+ * @author Synapse Team
+ * @since 2025-01-01
+ */
 
 import { getCollection } from '../db/db';
 import type { UserSchema, ArticleSchema, CommentSchema } from '$lib/schema';
 
+/**
+ * 管理员统计数据接口
+ * @interface AdminStats
+ * @property {number} totalUsers - 总用户数
+ * @property {number} totalArticles - 总文章数（已发布）
+ * @property {number} totalComments - 总评论数
+ * @property {number} todayNew - 今日新增内容总数
+ */
 export interface AdminStats {
     totalUsers: number;
     totalArticles: number;
@@ -11,8 +24,10 @@ export interface AdminStats {
 }
 
 /**
- * 获取后台管理统计数据
- * 使用聚合查询优化性能
+ * 获取管理后台统计数据
+ * @description 使用聚合查询获取平台各项数据统计，包括总量和今日新增
+ * @returns {Promise<AdminStats>} 统计数据对象
+ * @throws {Error} 当数据库查询失败时抛出错误
  */
 export async function getAdminStats(): Promise<AdminStats> {
     try {

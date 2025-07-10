@@ -1,3 +1,37 @@
+<!--
+    ArticleForm.svelte - 文章表单组件
+    
+    @component
+    @description 用于创建或编辑文章的表单组件，支持标题、摘要、标签和正文编辑
+    
+    @prop {Object} user - 用户信息对象
+    @prop {string} user._id - 用户ID
+    @prop {string} [user.name] - 用户姓名
+    @prop {string} [user.email] - 用户邮箱
+    @prop {Article} [initialArticle={}] - 初始文章数据（编辑模式）
+    @prop {Function} submitHandler - 表单提交处理函数
+    @prop {string} [submitButtonText="发布文章"] - 提交按钮文本
+    @prop {string} [formTitle="创建文章"] - 表单标题
+    @prop {string} [articleId] - 文章ID（编辑模式）
+    @prop {Function} [draftHandler] - 草稿保存处理函数
+    @prop {boolean} [showDraftButton=false] - 是否显示保存草稿按钮
+    
+    @typedef {Object} Article
+    @property {string} [title] - 文章标题
+    @property {string} [summary] - 文章摘要
+    @property {string[]} [tags] - 文章标签数组
+    @property {string} [body] - 文章正文
+    
+    @example
+    <ArticleForm
+        {user}
+        {submitHandler}
+        submitButtonText="发布文章"
+        formTitle="创建新文章"
+        showDraftButton={true}
+        {draftHandler}
+    />
+-->
 <script lang="ts">
   // --- Script部分保持不变 ---
   import { onMount } from "svelte";
@@ -52,6 +86,11 @@
     body: "",
   });
   // 处理标签输入
+  /**
+   * 处理标签输入事件
+   * @description 监听键盘事件，当用户按下Enter或逗号时添加标签
+   * @param {KeyboardEvent} event - 键盘事件
+   */
   function handleTagInput(event: KeyboardEvent): void {
     if (event.key === "Enter" && tagInput.trim()) {
       event.preventDefault(); // 阻止回车提交表单
@@ -81,13 +120,21 @@
     }
   }
 
-  // 删除标签
+  /**
+   * 删除指定标签
+   * @description 从标签数组中移除指定的标签并清除标签错误信息
+   * @param {string} tagToRemove - 要删除的标签
+   */
   function removeTag(tagToRemove: string): void {
     tags = tags.filter((tag: string) => tag !== tagToRemove);
     errors.tags = "";
   }
 
-  // 提交表单
+  /**
+   * 处理表单提交
+   * @description 验证表单数据并调用外部提交处理函数
+   * @throws {Error} 当表单验证失败时显示错误信息
+   */
   async function handleSubmit(): Promise<void> {
     // 重置错误和成功消息
     errors = { title: "", summary: "", tags: "", body: "" };
@@ -147,6 +194,11 @@
   }
 
   // 保存草稿
+  /**
+   * 保存草稿
+   * @description 验证表单数据并调用草稿保存处理函数
+   * @throws {Error} 当草稿保存失败时显示错误信息
+   */
   async function handleSaveDraft(): Promise<void> {
     if (!draftHandler) return;
 

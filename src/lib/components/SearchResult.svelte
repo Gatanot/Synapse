@@ -1,8 +1,32 @@
+<!--
+    SearchResult.svelte - 搜索结果项组件
+    
+    @component
+    @description 展示单个搜索结果的组件，包含文章标题、作者、时间、摘要和标签
+    
+    @prop {Object} article - 文章对象
+    @prop {string} article._id - 文章ID
+    @prop {string} article.title - 文章标题
+    @prop {string} article.authorId - 作者ID
+    @prop {string} article.authorName - 作者姓名
+    @prop {Date} article.createdAt - 创建时间
+    @prop {string} article.summary - 文章摘要
+    @prop {number} article.likes - 点赞数
+    @prop {string[]} article.tags - 文章标签数组
+    
+    @example
+    <SearchResult {article} />
+-->
 <script lang="ts">
     import Modal from './Modal.svelte';
     import { userDeletedModal } from '$lib/stores/userModal';
     let { article } = $props();
    
+    /**
+     * 处理作者点击事件
+     * @description 检查用户是否存在，存在则跳转到用户页面，不存在则显示用户已注销弹窗
+     * @param {MouseEvent} event - 鼠标点击事件
+     */
     async function handleAuthorClick(event: MouseEvent) {
         event.preventDefault();
         const userId = article.authorId;
@@ -27,6 +51,9 @@
             userDeletedModal.set(true);
         }
     }
+    /**
+     * 关闭用户已注销提示弹窗
+     */
     function closeModal() {
         userDeletedModal.set(false);
     }

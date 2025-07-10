@@ -60,17 +60,27 @@
     // 事件派发器
     const dispatch = createEventDispatcher();
 
-    // 处理确认事件
+    /**
+     * 处理确认按钮点击事件
+     * @description 派发confirm事件给父组件
+     */
     function handleConfirm() {
         dispatch('confirm');
     }
 
-    // 处理取消事件
+    /**
+     * 处理取消按钮点击事件
+     * @description 派发cancel事件给父组件
+     */
     function handleCancel() {
         dispatch('cancel');
     }
 
-    // 处理背景点击事件
+    /**
+     * 处理背景蒙层点击事件
+     * @description 当用户点击弹窗背景时关闭弹窗
+     * @param {MouseEvent} event - 鼠标点击事件
+     */
     function handleBackdropClick(event: MouseEvent) {
         // 只有当点击的是背景层时才关闭弹窗
         if (event.target === event.currentTarget) {
@@ -78,14 +88,22 @@
         }
     }
 
-    // 处理键盘事件
+    /**
+     * 处理键盘事件
+     * @description 监听Escape键按下事件以关闭弹窗
+     * @param {KeyboardEvent} event - 键盘事件
+     */
     function handleKeydown(event: KeyboardEvent) {
         if (escapeToClose && event.key === 'Escape') {
             dispatch('cancel');
         }
     }
 
-    // 当表单使用enhance增强时的处理函数
+    /**
+     * 表单增强处理函数
+     * @description 为表单提供增强功能，包括提交前后的事件派发
+     * @returns {Function} 返回enhance处理函数
+     */
     function enhanceForm() {
         dispatch('beforeSubmit');
         return async ({ update }: { update: () => Promise<void> }) => {

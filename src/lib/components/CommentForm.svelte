@@ -1,3 +1,18 @@
+<!--
+    CommentForm.svelte - 评论表单组件
+    
+    @component
+    @description 用于发表评论的表单组件，支持内容验证和字符计数
+    
+    @event {CustomEvent<{content: string}>} submit - 提交评论事件，包含评论内容
+    @event {CustomEvent<void>} cancel - 取消评论事件
+    
+    @example
+    <CommentForm
+        on:submit={handleCommentSubmit}
+        on:cancel={handleCommentCancel}
+    />
+-->
 <!-- src/lib/components/CommentForm.svelte -->
 <script lang="ts">
     import { createEventDispatcher } from "svelte";
@@ -27,7 +42,11 @@
             formData.content.length <= maxLength,
     );
 
-    // 提交表单
+    /**
+     * 处理表单提交
+     * @description 验证并提交评论内容
+     * @param {Event} [event] - 表单提交事件
+     */
     async function handleSubmit(event?: Event) {
         if (event) event.preventDefault();
         if (!isValid || isSubmitting) return;
@@ -37,14 +56,21 @@
         dispatch("submit", { content: formData.content.trim() });
     }
 
-    // 取消评论
+    /**
+     * 取消评论并重置表单
+     * @description 清空表单内容并派发取消事件
+     */
     function handleCancel() {
         formData.content = "";
         error = "";
         dispatch("cancel");
     }
 
-    // 处理键盘事件
+    /**
+     * 处理键盘快捷键
+     * @description 支持 Ctrl+Enter 或 Cmd+Enter 快速提交评论
+     * @param {KeyboardEvent} event - 键盘事件
+     */
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
