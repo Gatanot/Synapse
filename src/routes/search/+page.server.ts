@@ -59,25 +59,24 @@ export const load: ServerLoad = async ({ url }) => {
         }
 
         const allArticles = searchResult.data || [];
-        const hasMoreResults = allArticles.length > limit;
-        const displayArticles = hasMoreResults ? allArticles.slice(0, limit) : allArticles;
+        const hasMoreResults = allArticles.length === limit && allArticles.length > 0;
         
-        // 计算分页信息
-        const totalResults = skip + allArticles.length + (hasMoreResults ? 1 : 0); // 估算总数
-        const totalPages = Math.max(1, Math.ceil(totalResults / limit)); // 确保至少有1页
-
         // 提取模糊搜索信息
         const fuzzySearchInfo = (searchResult as any).fuzzySearchInfo;
+        
+        // 使用后端返回的准确总数，如果没有则估算
+        const totalResults = fuzzySearchInfo?.totalCount || (skip + allArticles.length + (hasMoreResults ? 1 : 0));
+        const totalPages = Math.max(1, Math.ceil(totalResults / limit));
 
         return {
-            articles: displayArticles,
+            articles: allArticles,
             searchTerm: searchTerm.trim(),
             searchType,
             hasSearched: true,
             fuzzySearchInfo, // 传递模糊搜索信息
             pagination: {
                 currentPage: page,
-                totalPages: Math.max(totalPages, page + (hasMoreResults ? 1 : 0)),
+                totalPages: totalPages,
                 totalResults: totalResults,
                 limit: limit,
                 hasMoreResults

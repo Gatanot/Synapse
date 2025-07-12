@@ -409,12 +409,76 @@ export async function getArticlesByUserId(
 }
 
 /**
- * 搜索文章
+ * 字符级分词函数：将词拆分为字符和子串
+ */
+function characterTokenize(text: string): string[] {
+    if (!text) return [];
+    
+    const cleanText = text.toLowerCase().trim();
+    const tokens: string[] = [];
+    
+    // 添加完整词
+    tokens.push(cleanText);
+    
+    // 添加单个字符
+    for (let i = 0; i < cleanText.length; i++) {
+        const char = cleanText[i];
+        if (char.match(/[a-z\u4e00-\u9fa5]/)) { // 只保留字母和中文
+            tokens.push(char);
+        }
+    }
+    
+    // 添加2-3字符的子串
+    for (let i = 0; i < cleanText.length - 1; i++) {
+        if (i + 2 <= cleanText.length) {
+            const substr = cleanText.substring(i, i + 2);
+            if (substr.match(/^[a-z\u4e00-\u9fa5]+$/)) {
+                tokens.push(substr);
+            }
+        }
+        if (i + 3 <= cleanText.length) {
+            const substr = cleanText.substring(i, i + 3);
+            if (substr.match(/^[a-z\u4e00-\u9fa5]+$/)) {
+                tokens.push(substr);
+            }
+        }
+    }
+    
+    return [...new Set(tokens)]; // 去重
+}
+
+/**
+ * 计算文本匹配分数
+ */
+function calculateMatchScore(searchTokens: string[], targetText: string, weight: number = 1): number {
+    if (!targetText || searchTokens.length === 0) return 0;
+    
+    const targetLower = targetText.toLowerCase();
+    let score = 0;
+    
+    for (const token of searchTokens) {
+        if (targetLower.includes(token)) {
+            // 完全匹配得分最高
+            if (targetLower === token) {
+                score += 10 * weight;
+            } else if (targetLower.startsWith(token) || targetLower.endsWith(token)) {
+                score += 5 * weight;
+            } else {
+                score += Math.max(1, token.length) * weight; // 根据匹配长度给分
+            }
+        }
+    }
+    
+    return score;
+}
+
+/**
+ * 搜索文章 - 先精确搜索，结果不足时进行模糊搜索
  */
 export async function searchArticles(
     query: string,
     options: any = {}
-): Promise<DbResult<ArticleClient[]>> {
+): Promise<DbResult<ArticleClient[]> & { fuzzySearchInfo?: any }> {
     try {
         const articlesCollection = await getCollection<ArticleSchema>(COLLECTION_NAME);
         
@@ -425,39 +489,6 @@ export async function searchArticles(
             includeBody = false,
             searchType = 'all'
         } = options;
-
-        let searchQuery: any = {};
-
-        // 根据搜索类型构建查询
-        switch (searchType) {
-            case 'title':
-                searchQuery.title = { $regex: query, $options: 'i' };
-                break;
-            case 'tags':
-                searchQuery.tags = { $in: [new RegExp(query, 'i')] };
-                break;
-            case 'author':
-                searchQuery.authorName = { $regex: query, $options: 'i' };
-                break;
-            case 'content':
-                searchQuery.body = { $regex: query, $options: 'i' };
-                break;
-            case 'all':
-            default:
-                searchQuery.$or = [
-                    { title: { $regex: query, $options: 'i' } },
-                    { summary: { $regex: query, $options: 'i' } },
-                    { body: { $regex: query, $options: 'i' } },
-                    { tags: { $in: [new RegExp(query, 'i')] } },
-                    { authorName: { $regex: query, $options: 'i' } }
-                ];
-                break;
-        }
-
-        // 添加状态过滤
-        if (status !== 'all') {
-            searchQuery.status = status;
-        }
 
         // 构建投影
         const projection: any = {
@@ -476,14 +507,153 @@ export async function searchArticles(
             projection.body = 1;
         }
 
-        const articlesFromDb = await articlesCollection
-            .find(searchQuery, { projection })
+        // 第一步：精确搜索
+        let exactSearchQuery: any = {};
+        
+        switch (searchType) {
+            case 'title':
+                exactSearchQuery.title = { $regex: query, $options: 'i' };
+                break;
+            case 'tags':
+                exactSearchQuery.tags = { $in: [new RegExp(query, 'i')] };
+                break;
+            case 'author':
+                exactSearchQuery.authorName = { $regex: query, $options: 'i' };
+                break;
+            case 'content':
+                exactSearchQuery.body = { $regex: query, $options: 'i' };
+                break;
+            case 'all':
+            default:
+                exactSearchQuery.$or = [
+                    { title: { $regex: query, $options: 'i' } },
+                    { summary: { $regex: query, $options: 'i' } },
+                    { body: { $regex: query, $options: 'i' } },
+                    { tags: { $in: [new RegExp(query, 'i')] } },
+                    { authorName: { $regex: query, $options: 'i' } }
+                ];
+                break;
+        }
+
+        // 添加状态过滤
+        if (status !== 'all') {
+            exactSearchQuery.status = status;
+        }
+
+        // 执行精确搜索
+        const exactResults = await articlesCollection
+            .find(exactSearchQuery, { projection })
             .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
+            .limit(50) // 获取更多结果用于判断
             .toArray();
 
-        const articlesForClient: ArticleClient[] = articlesFromDb.map((article) => ({
+        let allResults = exactResults;
+        let fuzzySearchInfo: any = {
+            originalQuery: query,
+            originalTerm: query,
+            exactCount: exactResults.length,
+            fuzzyCount: 0,
+            isFuzzySearch: false,
+            tokens: [] as string[]
+        };
+
+        // 第二步：如果精确搜索结果少于3个，进行模糊搜索
+        if (exactResults.length < 3) {
+            const searchTokens = characterTokenize(query);
+            fuzzySearchInfo.tokens = searchTokens;
+            fuzzySearchInfo.isFuzzySearch = exactResults.length === 0; // 只有精确搜索为0时才显示提示
+
+            if (searchTokens.length > 1) {
+                const regexPatterns = searchTokens.slice(1).map(token => new RegExp(token, 'i')); // 排除完整词，避免重复
+                
+                let fuzzySearchQuery: any = {};
+                
+                switch (searchType) {
+                    case 'title':
+                        fuzzySearchQuery.$or = regexPatterns.map(pattern => ({ title: pattern }));
+                        break;
+                    case 'tags':
+                        fuzzySearchQuery.$or = regexPatterns.map(pattern => ({ tags: { $in: [pattern] } }));
+                        break;
+                    case 'author':
+                        fuzzySearchQuery.$or = regexPatterns.map(pattern => ({ authorName: pattern }));
+                        break;
+                    case 'content':
+                        fuzzySearchQuery.$or = regexPatterns.map(pattern => ({ body: pattern }));
+                        break;
+                    case 'all':
+                    default:
+                        fuzzySearchQuery.$or = [
+                            ...regexPatterns.map(pattern => ({ title: pattern })),
+                            ...regexPatterns.map(pattern => ({ summary: pattern })),
+                            ...regexPatterns.map(pattern => ({ body: pattern })),
+                            ...regexPatterns.map(pattern => ({ tags: { $in: [pattern] } })),
+                            ...regexPatterns.map(pattern => ({ authorName: pattern }))
+                        ];
+                        break;
+                }
+
+                // 添加状态过滤
+                if (status !== 'all') {
+                    fuzzySearchQuery.status = status;
+                }
+
+                // 排除已有的精确搜索结果
+                const exactIds = exactResults.map(article => article._id);
+                if (exactIds.length > 0) {
+                    fuzzySearchQuery._id = { $nin: exactIds };
+                }
+
+                // 执行模糊搜索
+                const fuzzyResults = await articlesCollection
+                    .find(fuzzySearchQuery, { projection })
+                    .sort({ createdAt: -1 })
+                    .limit(50)
+                    .toArray();
+
+                fuzzySearchInfo.fuzzyCount = fuzzyResults.length;
+                
+                // 合并精确搜索和模糊搜索结果
+                allResults = [...exactResults, ...fuzzyResults];
+            }
+        }
+
+        // 计算相关性分数并排序（仅对模糊搜索结果）
+        const resultsWithScores = allResults.map((article, index) => {
+            let score = 0;
+            
+            if (index < exactResults.length) {
+                // 精确搜索结果给予更高基础分数
+                score = 1000 - index; // 按原始顺序，越早越高分
+            } else {
+                // 模糊搜索结果计算匹配分数
+                const tokens = fuzzySearchInfo.tokens.slice(1); // 排除完整词
+                score += calculateMatchScore(tokens, article.title, 3);
+                score += calculateMatchScore(tokens, article.summary, 2);
+                score += calculateMatchScore(tokens, article.authorName, 1.5);
+                score += calculateMatchScore(tokens, article.tags?.join(' ') || '', 2);
+                
+                if (includeBody && article.body) {
+                    score += calculateMatchScore(tokens, article.body, 1);
+                }
+            }
+
+            return { article, score, isExact: index < exactResults.length };
+        });
+
+        // 排序：精确搜索结果优先，然后按分数排序
+        resultsWithScores.sort((a, b) => {
+            if (a.isExact && !b.isExact) return -1;
+            if (!a.isExact && b.isExact) return 1;
+            if (a.isExact && b.isExact) return a.score > b.score ? -1 : 1; // 精确搜索按原始顺序
+            return b.score - a.score; // 模糊搜索按分数
+        });
+
+        // 分页处理
+        const totalCount = resultsWithScores.length; // 总结果数
+        const paginatedResults = resultsWithScores.slice(skip, skip + limit);
+        
+        const articlesForClient: ArticleClient[] = paginatedResults.map(({ article }) => ({
             _id: article._id.toString(),
             title: article.title,
             summary: article.summary,
@@ -496,12 +666,27 @@ export async function searchArticles(
             ...(includeBody && { body: article.body }),
         }));
 
-        return { data: articlesForClient, error: null };
+        return { 
+            data: articlesForClient, 
+            error: null,
+            fuzzySearchInfo: {
+                ...fuzzySearchInfo,
+                totalCount
+            }
+        };
 
     } catch (error: any) {
         return {
             data: null,
-            error: { code: 'SEARCH_ERROR', message: error.message }
+            error: { code: 'SEARCH_ERROR', message: error.message },
+            fuzzySearchInfo: {
+                originalQuery: query,
+                originalTerm: query,
+                exactCount: 0,
+                fuzzyCount: 0,
+                tokens: [] as string[],
+                isFuzzySearch: false
+            }
         };
     }
 }
