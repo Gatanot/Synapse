@@ -35,13 +35,21 @@
 ### 技术选择
 sveltekit+mongodb
 
-## 待完成文档
-1. 需求分析报告,阐述项目的目标、功能需求、性能需求、可维护性需求等
-2. 系统建模报告,包括用例图、类图、序列图、状态图等
-3. 架构设计报告,描述系统的整体架构以及关键设计决策
-4. 软件工程化(自动化、协作化)说明文档,指出采用的软件工程化手段
-5. 一份软件测试与质量保证报告,详细说明测试计划、测试测试用例、缺陷追踪和质量保证方法
-6. 软件配置与运维文档,包括配置管理、版本控制、持续集成、部署和运维计划等
-7. 团队报告,列出每个团队成员的具体贡献及各个阶段的工作分配
+## 相关文档
+完成的文档如下,可在项目路径`reports/markdown`或`reports/pdf`中查看详细内容
+- [需求分析报告.md](reports/markdown/需求分析报告.md)与[需求分析报告.pdf](reports/pdf/需求分析报告.pdf)
+- [系统建模报告.md](reports/markdown/系统建模报告.md)与[系统建模报告.pdf](reports/pdf/系统建模报告.pdf)
+- [架构设计报告.md](reports/markdown/架构设计报告.md)与[架构设计报告.pdf](reports/pdf/架构设计报告.pdf)
+- [软件工程化说明文档.md](reports/markdown/软件工程化说明文档.md)与[软件工程化说明文档.pdf](reports/pdf/软件工程化说明文档.pdf)
+- [软件测试与质量保证报告.md](reports/markdown/软件测试与质量保证报告.md)与[软件测试与质量保证报告.pdf](reports/pdf/软件测试与质量保证报告.pdf)
+- [软件配置与运维文档.md](reports/markdown/软件配置与运维文档.md)与[软件配置与运维文档.pdf](reports/pdf/软件配置与运维文档.pdf)
+- [团队报告.md](reports/markdown/团队报告.md)与[团队报告.pdf](reports/pdf/团队报告.pdf)
 
+## 项目演示视频
+在`videos`文件夹下提供了演示视频,可以在邮箱附件内查看,或访问[百度网盘连接](https://pan.baidu.com/s/1N2VxqbG3AkniG-JVoPhSnQ?pwd=xq1x)获取.内容包括
 
+- 用户系统演示
+- 文章系统演示
+- 互动功能演示
+- 搜索功能演示
+- 管理后台演示
