@@ -325,7 +325,7 @@
                         {/if}
                         
                         <p class="results-count">
-                            找到 {searchResults.length} 篇相关文章
+                            找到 {paginationInfo.totalResults || searchResults.length} 篇相关文章
                             {#if data.searchType && data.searchType !== 'all'}
                                 (搜索范围: {getSearchTypeDisplay(data.searchType)})
                             {/if}
